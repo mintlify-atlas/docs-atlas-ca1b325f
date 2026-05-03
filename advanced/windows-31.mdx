@@ -1,0 +1,158 @@
+---
+title: "Installing and running Windows 3.1 in DOSBox Staging"
+description: "Install Windows 3.1 or WfW 3.11 inside DOSBox Staging with the S3 SVGA driver, Sound Blaster 16 audio, MIDI output, and seamless mouse integration."
+---
+
+Windows 3.1 was not a standalone operating system — it was a graphical environment that ran on top of DOS. DOSBox Staging supports it fully, making it possible to run games and software released exclusively for the Windows 3.1 platform. You will need Windows 3.1 or Windows for Workgroups 3.11 installation media (floppy disk images or extracted files).
+
+<Warning>
+  Windows 9x (95, 98, ME) is **not** supported by DOSBox Staging.
+</Warning>
+
+## Recommended configuration
+
+Use the following DOSBox Staging config as a starting point:
+
+```ini
+[dosbox]
+machine = svga_s3
+memsize = 32
+
+[cpu]
+cpu_cycles = 30000
+cputype = pentium
+
+[sblaster]
+sbtype = sb16
+
+[midi]
+mididevice = soundcanvas
+```
+
+<Warning>
+  Setting `cputype` to `pentium` is important. Some Windows 3.1 games (such as Betrayal in Antara) require it and will not run correctly without it.
+</Warning>
+
+<Tip>
+  Add `WIN :` (note the space and colon) to your `[autoexec]` section to launch Windows automatically and skip the startup logo.
+</Tip>
+
+## Installation
+
+<Steps>
+  <Step title="Prepare the installation files">
+    Mount your Windows 3.1 installation files so they are accessible from DOS. For example, copy them to `C:\INSTALL` or mount a directory containing the extracted floppy images.
+  </Step>
+  <Step title="Run SETUP">
+    Navigate to the installation directory and run `SETUP`.
+
+    ```doscon
+    C:\INSTALL\SETUP
+    ```
+  </Step>
+  <Step title="Choose 386 Enhanced mode">
+    When prompted for the operating mode, choose **386 Enhanced**. DOSBox always emulates a 386 or better, so this option is always available.
+  </Step>
+  <Step title="Install to C:\WINDOWS">
+    Use `C:\WINDOWS` as the installation target to follow convention.
+  </Step>
+  <Step title="Launch Windows">
+    After installation completes, start Windows with:
+
+    ```doscon
+    WIN
+    ```
+  </Step>
+</Steps>
+
+## Video driver
+
+The default Windows VGA driver limits you to 640×480 at 16 colours. Install the S3 Vision 964 v1.41B5 driver for full SVGA support.
+
+<Warning>
+  Always install the video driver *after* the initial Windows installation, not during it. Back up your `C:\WINDOWS` directory before changing display drivers.
+</Warning>
+
+<Steps>
+  <Step title="Download and extract the driver">
+    Download the [S3 Vision 964 v1.41B5 driver](https://github.com/dosbox-staging/dosbox-staging/files/11050083/s3-964-141B5.ZIP) and extract the ZIP to a directory accessible from DOS, such as `C:\DRIVERS\S3`.
+  </Step>
+  <Step title="Exit Windows and run SETUP">
+    Exit Windows and run `SETUP` from the DOS prompt:
+
+    ```doscon
+    C:\WINDOWS\SETUP
+    ```
+  </Step>
+  <Step title="Select the S3 driver">
+    Navigate to the **Display** section, select **Other**, and point to `C:\DRIVERS\S3`. Choose **640×480, 256 colours** as a safe starting point.
+  </Step>
+  <Step title="Increase video memory for higher resolutions (optional)">
+    Higher resolutions up to 1600×1200 are available if you set `vmemsize = 4` (or higher) in the `[dosbox]` section of your config.
+  </Step>
+</Steps>
+
+## Audio driver
+
+Install the Sound Blaster 16 driver for digital audio and OPL music inside Windows.
+
+<Steps>
+  <Step title="Download and extract the driver">
+    Download the [Sound Blaster 16 driver for Windows 3.x](https://github.com/dosbox-staging/dosbox-staging/files/11039394/SB16W3X.ZIP) and extract it to `C:\DRIVERS\SB16`.
+  </Step>
+  <Step title="Run INSTALL from within Windows">
+    From inside Windows, run `C:\DRIVERS\SB16\INSTALL` and choose **Full Installation**.
+  </Step>
+  <Step title="Enter the hardware settings">
+    When prompted, use DOSBox Staging's default values:
+
+    | Setting   | Value |
+    |-----------|-------|
+    | Base address | 220 |
+    | IRQ       | 7     |
+    | DMA       | 1     |
+    | High DMA  | 5     |
+  </Step>
+  <Step title="Clean up the generated files">
+    Delete the `CONFIG.SYS` and `AUTOEXEC.BAT` files the installer generates — they are not needed under DOSBox.
+  </Step>
+  <Step title="Test audio">
+    Open `C:\WINDOWS\CANYON.MID` in Windows Media Player to verify playback.
+  </Step>
+</Steps>
+
+## MIDI setup
+
+After installing the Sound Blaster 16 driver:
+
+<Steps>
+  <Step title="Open MIDI Mapper">
+    In Windows, open **Control Panel → MIDI Mapper**.
+  </Step>
+  <Step title="Select SB16 All MIDI">
+    Select **SB16 All MIDI** as the active setup.
+  </Step>
+</Steps>
+
+This routes MIDI output through DOSBox Staging's configured `mididevice`. Change the `mididevice` setting in your DOSBox config to switch between FluidSynth, Sound Canvas SC-55 emulation, or Roland MT-32 emulation for Windows 3.1 games.
+
+## Mouse setup
+
+The built-in PS/2 mouse driver installed by Windows works without any additional configuration. DOSBox emulates a two-button mouse by default, which is the standard for the DOS era and compatible with nearly all Windows 3.1 games.
+
+<Tip>
+  For seamless mouse integration — where the pointer moves freely between the DOSBox window and your desktop without capturing or releasing — install the [VirtualBox mouse driver](https://git.javispedro.com/cgit/vbmouse.git/about/).
+</Tip>
+
+If you need three-button mouse support for a specific game, enable it via the `dos_mouse_driver` setting.
+
+## Known limitations
+
+- Windows 9x (95, 98, ME) is not supported.
+- Only Windows 3.1 and Windows for Workgroups 3.11 are supported.
+- The `machine = svga_s3` setting is required for SVGA support; other machine types limit you to standard VGA.
+- High DMA (16-bit audio) is unavailable on `machine = tandy` or `machine = pcjr` configurations due to I/O port conflicts.
+
+## Further reading
+
+For a full walkthrough with screenshots, driver troubleshooting, and optional add-ons such as Video for Windows, Win32s, and QuickTime, see the [Windows wiki page](https://github.com/dosbox-staging/dosbox-staging/wiki/Windows).

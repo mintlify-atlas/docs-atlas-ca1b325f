@@ -1,0 +1,591 @@
+---
+title: "DOS Sound Devices: Complete Configuration Reference"
+description: "Configure every emulated DOS sound device in DOSBox Staging — AdLib, Sound Blaster, Roland MT-32, General MIDI, Gravis UltraSound, PC speaker, and more."
+---
+
+DOSBox Staging emulates nearly 20 distinct DOS-era sound devices, spanning hardware from 1981 to 1997. Each device has its own configuration section, mixer channel, and historical context. This page covers all supported devices in one place — their typical use era, required files (if any), and the configuration settings that control them.
+
+For background on how DOS games used sound hardware and which device to choose for a given era, see the [Sound overview](/sound/overview).
+
+<Note>
+  Most DOS sound cards require matching **I/O base address**, **IRQ**, and **DMA** settings between the DOSBox configuration and the game's setup utility. The Sound Blaster defaults are: base `220`, IRQ `7`, DMA `1`.
+</Note>
+
+## AdLib and OPL FM synthesis
+
+The **AdLib Music Synthesizer Card** (1987) was the first widely popular sound card for IBM PC compatibles. Its Yamaha OPL2 chip became a de facto standard: virtually all DOS games from 1990 onwards include AdLib support as a minimum fallback option. DOSBox emulates OPL chips using the highly accurate **NukedOPL** library for near bit-perfect output.
+
+The OPL synthesiser outputs to the **OPL** [mixer channel](/sound/mixer). Whether it is mono or stereo depends on the emulated Sound Blaster model.
+
+<AccordionGroup>
+  <Accordion title="AdLib (standalone OPL2)">
+    Use this when a game has AdLib support but you do not need digital audio playback.
+
+    ```ini
+    [sblaster]
+    sbtype  = none
+    oplmode = opl2
+    ```
+
+    <Note>
+      When `oplmode = opl2`, CMS emulation is also enabled. This is legacy DOSBox behaviour and will be addressed in a future version.
+    </Note>
+  </Accordion>
+  <Accordion title="AdLib Gold 1000 (OPL3 + surround module)">
+    The **AdLib Gold 1000** (1992) pairs a Yamaha OPL3 chip with an optional surround module that adds chorus and reverb. Very few games support it directly; the standout title is **Dune** (1992), which fully exploits both the card and its surround module.
+
+    ```ini
+    [sblaster]
+    sbtype  = sb16
+    oplmode = opl3gold
+    ```
+  </Accordion>
+  <Accordion title="ESS ESFM (enhanced OPL3)">
+    **ESFM** is the OPL3-compatible FM synthesiser found on ESS AudioDrive cards (1995). In legacy mode it is identical to OPL3; in native mode it offers advanced synthesis capabilities. Only a handful of games support native ESFM mode, but those that do sound noticeably better.
+
+    To use **native ESFM mode** in a supported game, set `sbtype = ess` and select the ESS Enhanced FM Audio driver in the game's setup utility:
+
+    ```ini
+    [sblaster]
+    sbtype = ess
+    ```
+
+    To use **legacy OPL3-compatible mode** (works with any Sound Blaster model):
+
+    ```ini
+    [sblaster]
+    sbtype  = sb16
+    oplmode = esfm
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Sound Blaster family
+
+The Sound Blaster line by Creative Technology was the de facto standard for DOS game audio from 1989 to the late 1990s. DOSBox Staging emulates all major revisions. The **Sound Blaster 16** is the default emulated card, providing the widest compatibility.
+
+Digital audio outputs to the **SB** [mixer channel](/sound/mixer); OPL synthesis outputs to **OPL**; CMS synthesis (where present) outputs to **CMS**.
+
+All Sound Blaster and AdLib settings go in the `[sblaster]` section.
+
+### Default hardware resource settings
+
+| Setting | Config key | Default value |
+|---|---|---|
+| Base address (I/O port) | `sbbase` | `220` |
+| IRQ (interrupt) | `irq` | `7` |
+| DMA | `dma` | `1` |
+| High DMA (16-bit audio) | `hdma` | `5` |
+
+DOSBox injects the `BLASTER` environment variable at startup based on these settings. Run `SET BLASTER` at the DOS prompt to see the current value. Never set this variable manually.
+
+### Choosing the right Sound Blaster model
+
+While the Sound Blaster 16 emulates earlier cards reasonably well, backward compatibility is imperfect. Differences include:
+
+- **Stereo bug** — Sound Blaster 16 outputs mono sound for games with stereo digital audio designed for Sound Blaster Pro
+- **Output filter character** — earlier cards have a fixed low-pass filter that gives low-sample-rate audio a characteristic "crunchy" sound; the SB16 filter is cleaner and makes the same audio sound muffled
+- **Dual OPL2** — only the Sound Blaster Pro 1.0 (`sbpro1`) has the dual-OPL2 configuration; games targeting it will only produce stereo OPL sound on that model
+
+For authentic results, set `sbtype` to match the card the game was developed for, and set `sb_filter = auto` to enable model-accurate analog output filter emulation.
+
+<AccordionGroup>
+  <Accordion title="Game Blaster / Creative Music System (CMS) — 1987">
+    The **Creative Music System** was Creative Technology's first product, released in 1987. It produces stereo square-wave synthesis using two SAA1099 chips. It was rebranded as the **Game Blaster** in 1988 with no hardware changes.
+
+    **Era:** 1987–1991 · **Mixer channel:** CMS
+
+    ```ini
+    [sblaster]
+    sbtype = gb
+    ```
+
+    <Note>
+      CMS support in some early games only works with `sbtype = gb` specifically, not with Sound Blaster models that include CMS compatibility.
+    </Note>
+  </Accordion>
+  <Accordion title="Sound Blaster 1.0 — 1989">
+    The first Sound Blaster; the first consumer card with digital audio playback. Outputs 8-bit mono audio at up to 23 kHz, plus OPL2 (mono) and CMS synthesis.
+
+    **Era:** 1989–1991 · **Mixer channels:** SB, OPL, CMS
+
+    ```ini
+    [sblaster]
+    sbtype = sb1
+    ```
+
+    <Note>
+      A small number of early Sound Blaster games only work with `sb1` and no other model.
+    </Note>
+  </Accordion>
+  <Accordion title="Sound Blaster 2.0 — 1991">
+    Successor to Sound Blaster 1.0 with an increased maximum sample rate of 44 kHz for digital audio. Retains OPL2 compatibility; CMS is an optional add-on (not built in).
+
+    **Era:** 1991–1992 · **Mixer channels:** SB, OPL
+
+    ```ini
+    [sblaster]
+    sbtype = sb2
+    ```
+  </Accordion>
+  <Accordion title="Sound Blaster Pro — 1991">
+    First Sound Blaster with stereo sound. Supports 8-bit mono at 44 kHz and 8-bit stereo at 23 kHz. Features a *pair* of OPL2 chips for **dual OPL2** stereo synthesis — the only Sound Blaster model with this configuration. Many games output stereo OPL music specifically when configured for `sbpro1`.
+
+    **Era:** 1991–1992 · **Mixer channels:** SB, OPL
+
+    ```ini
+    [sblaster]
+    sbtype = sbpro1
+    ```
+
+    <Warning>
+      Games with stereo OPL sound target either dual OPL2 (`sbpro1`) or OPL3 (later models). Configuring a game for the wrong model produces mono output at best, no sound at worst. Match `sbtype` to the model selected in the game's sound setup.
+    </Warning>
+  </Accordion>
+  <Accordion title="Sound Blaster Pro 2.0 — 1991">
+    Functionally identical to the Sound Blaster Pro but replaces the dual OPL2 chips with a single Yamaha OPL3 chip. OPL3 is fully backward-compatible with single-OPL2 games but not with dual-OPL2 games.
+
+    **Era:** 1991–1993 · **Mixer channels:** SB, OPL
+
+    ```ini
+    [sblaster]
+    sbtype = sbpro2
+    ```
+  </Accordion>
+  <Accordion title="Sound Blaster 16 — 1992 (default)">
+    The first Sound Blaster to support CD-quality audio: stereo 16-bit digital audio at 44 kHz. Features a Yamaha OPL3 chip with full OPL2 backward-compatibility. This is the card DOSBox Staging emulates by default.
+
+    **Era:** 1992–1997 · **Mixer channels:** SB, OPL
+
+    ```ini
+    [sblaster]
+    sbtype = sb16
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Sound Blaster configuration reference
+
+<AccordionGroup>
+  <Accordion title="sbtype">
+    Sound Blaster model to emulate.
+
+    Possible values: `none` (disable), `gb` (Game Blaster), `sb1`, `sb2`, `sbpro1`, `sbpro2`, `sb16` (default), `ess` (ESS AudioDrive / ESFM).
+  </Accordion>
+  <Accordion title="sb_filter">
+    Filter for the Sound Blaster digital audio output.
+
+    - `modern` (default) — Linear interpolation upsampling; legacy DOSBox behaviour; works well across most games
+    - `auto` — Model-accurate analog output filter emulation based on `sbtype`
+    - `sb1`, `sb2`, `sbpro1`, `sbpro2`, `sb16` — Use the filter of a specific model regardless of `sbtype`
+    - `off` — No filtering
+    - Custom filter definition (e.g., `lpf 2 8000`)
+  </Accordion>
+  <Accordion title="oplmode">
+    OPL chip to emulate. DOSBox uses the NukedOPL library for near bit-perfect accuracy.
+
+    - `auto` (default) — Determined by `sbtype`
+    - `opl2` — Yamaha OPL2 (mono)
+    - `dualopl2` — Dual OPL2 (stereo; matches Sound Blaster Pro)
+    - `opl3` — Yamaha OPL3 (stereo)
+    - `opl3gold` — OPL3 + AdLib Gold surround module
+    - `esfm` — ESS ESFM enhanced FM synthesiser
+    - `none` / `off` — Disable OPL
+  </Accordion>
+  <Accordion title="sbbase, irq, dma, hdma">
+    Hardware resource settings for the Sound Blaster.
+
+    - `sbbase`: I/O base address. Default `220`. Most games assume `220` and do not allow changing it.
+    - `irq`: IRQ number. Default `7`. Many older games assume IRQ 7 and do not allow changing it.
+    - `dma`: DMA channel for 8-bit audio. Default `1`. Many older games assume DMA 1.
+    - `hdma`: High DMA channel for 16-bit audio (SB16 only). Default `5`.
+  </Accordion>
+  <Accordion title="sbmixer">
+    Allow the Sound Blaster's own software mixer to modify DOSBox mixer volumes (`on` by default). Starting with the Sound Blaster Pro, programs can adjust channel volumes via the SB software mixer. Set to `off` to prevent games from overriding your manually configured volumes — but note that some games use the mixer to achieve specific effects such as lowering music during speech.
+
+    Possible values: `on`, `off`
+  </Accordion>
+  <Accordion title="opl_filter">
+    Filter for OPL output. Defaults to `auto`, which selects the filter appropriate for the current `sbtype`. Can be set to a specific model, `off`, or a custom filter definition.
+  </Accordion>
+  <Accordion title="cms_filter">
+    Filter for CMS / Game Blaster output. Default `on` applies a 1st-order low-pass filter at 6 kHz. Can be set to `off` or a custom filter definition.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Roland MT-32
+
+The **Roland MT-32** (1987) uses Linear Arithmetic (LA) synthesis — a combination of sample playback and digital synthesis — to produce a wide range of realistic and synthesised sounds. It was the gold standard for DOS game audio from about 1988 to 1992, used extensively by Sierra On-Line and LucasArts for their adventure games.
+
+Unlike General MIDI, the MT-32 is fully programmable: most games that support it upload custom instrument patches at startup. Sound modules with "MT-32 compatibility modes" can only play the built-in sounds; games that rely on custom patches will sound completely wrong on them.
+
+**Era:** 1987–1993 · **Mixer channel:** MT32 · **Requires:** Roland ROM files
+
+<Warning>
+  The Roland MT-32 ROM images are copyrighted by Roland Corporation and cannot be bundled with DOSBox Staging. You must provide the ROM files yourself. Emulation produces no sound without them.
+</Warning>
+
+### MT-32 variants
+
+| Model | `model` value | Notes |
+|---|---|---|
+| MT-32 "old" (v1.0x) | `mt32_old` | Original 1987 hardware; some games exploit firmware quirks present only here |
+| MT-32 "new" (v2.0x) | `mt32_new` | Faster CPU, lower noise floor, revised samples |
+| CM-32L / LAPC-I | `cm32l` | MT-32 "new" compatible + 33 extra sound effects; best all-round choice |
+
+`model = auto` (the default) prefers the CM-32L when its ROMs are available. For early Sierra games (1988–1990) that sound most authentic on original hardware, use `model = mt32_old` in a per-game config.
+
+### ROM file locations
+
+Place ROM files in the default MT-32 ROM directory for your platform:
+
+| Platform | Default directory |
+|---|---|
+| Windows | `C:\Users\<USERNAME>\AppData\Local\DOSBox\mt32-roms\` |
+| macOS | `~/Library/Preferences/DOSBox/mt32-roms/` |
+| Linux | `~/.local/share/dosbox/mt32-roms/` |
+
+ROMs are identified by checksum — file names do not matter. Both interleaved and non-interleaved dumps are supported. Run `MIXER /LISTMIDI` at the DOS prompt to see which ROMs are detected.
+
+### Basic configuration
+
+```ini
+[midi]
+mididevice = mt32
+
+[mt32]
+romdir = /path/to/mt32-roms
+
+# Best all-round choice (prefers CM-32L if available)
+model = auto
+```
+
+For early Sierra adventures that need the original hardware quirks:
+
+```ini
+[mt32]
+model = mt32_old
+```
+
+<Tip>
+  Use DOSBox Staging's [config file layering](https://www.dosbox-staging.org/about/) to set `model = mt32_old` in a per-game config while keeping `model = auto` globally.
+</Tip>
+
+### MT-32 configuration reference
+
+<AccordionGroup>
+  <Accordion title="model">
+    Roland MT-32/CM-32L model to use. Requires the corresponding ROM files.
+
+    Possible values: `auto` (default; best available), `cm32l`, `mt32_old`, `mt32_new`, `mt32`, or an exact version (e.g., `mt32_204`).
+
+    Run `MIXER /LISTMIDI` to see available models.
+  </Accordion>
+  <Accordion title="romdir">
+    Directory containing the MT-32/CM-32L ROM files. Leave unset to use the platform default location (`mt32-roms` in the DOSBox configuration directory). Absolute and relative paths are both accepted.
+  </Accordion>
+  <Accordion title="mt32_filter">
+    Filter for the MT-32 audio output. Default `off` — no filtering. Accepts a custom filter definition (e.g., `lpf 1 11000`).
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## General MIDI
+
+**General MIDI (GM)** standardised instrument assignments across synthesisers so that music sounds recognisable on any compliant device. **Roland's GS extension** sits on top of GM, adding extra instruments, percussion kits, and effects while remaining backward-compatible with GM.
+
+The **Roland SC-55 Sound Canvas** (1991) was the first Sound Canvas module and quickly became the reference device that DOS game composers used. Games from the mid-1990s — Doom, Monkey Island 2, Ultima VII, Duke Nukem 3D — sound their best through an SC-55 or a well-matched emulation.
+
+**Era:** 1991–1997
+
+DOSBox Staging provides two paths to General MIDI playback: Sound Canvas emulation (hardware-accurate but CPU-intensive) and FluidSynth (flexible, uses SoundFont files).
+
+### MIDI interface settings
+
+MIDI settings go in the `[midi]` section.
+
+```ini
+[midi]
+mididevice = mt32        ; or fluidsynth, soundcanvas, port
+mpu401     = intelligent ; required by most older MT-32 games
+```
+
+The `mpu401 = intelligent` mode (the default) provides MIDI sequencer features that older Sierra games depend on. Most later games work with `uart` mode; all work with `intelligent`.
+
+### Sound Canvas emulation
+
+Sound Canvas emulation uses the **Nuked SC55 CLAP** plugin to reproduce the SC-55 sound engine sample-accurately. This is the closest you can get to the real hardware without owning one.
+
+**Mixer channel:** SOUNDCANVAS · **Requires:** SC-55 ROM files
+
+```ini
+[midi]
+mididevice = soundcanvas
+
+[soundcanvas]
+soundcanvas_model = auto
+```
+
+Place the SC-55 ROM files in the `soundcanvas-roms` directory inside your DOSBox configuration folder:
+
+| Platform | ROM directory |
+|---|---|
+| Windows | `C:\Users\<USERNAME>\AppData\Local\DOSBox\soundcanvas-roms\` |
+| macOS | `~/Library/Preferences/DOSBox/soundcanvas-roms/` |
+| Linux | `~/.config/dosbox/soundcanvas-roms/` |
+
+The **SC-55 v1.21** firmware is the best overall choice for DOS gaming — it includes Capital Tone Fallback (CTF), correct instrument mappings, and all known firmware bugs fixed. Avoid v2.00 and Mk II models for games that depend on CTF (including Blood, Duke Nukem 3D, Hexen, WarCraft II, and others).
+
+<Note>
+  Sound Canvas emulation is CPU-intensive. A mid-range desktop CPU from the last 5–7 years is recommended. If your system struggles, FluidSynth with a high-quality SoundFont is a lighter alternative.
+</Note>
+
+### FluidSynth
+
+**FluidSynth** is a built-in software MIDI synthesiser that uses **SoundFont** (`.sf2`) sample banks. The character of the output depends entirely on which SoundFont you load. FluidSynth is lighter on CPU than Sound Canvas emulation and very flexible.
+
+**Mixer channel:** FSYNTH · **Requires:** a SoundFont `.sf2` file
+
+```ini
+[midi]
+mididevice = fluidsynth
+
+[fluidsynth]
+soundfont = GeneralUser-GS
+```
+
+Place SoundFont files in the `soundfonts` directory inside your DOSBox configuration folder:
+
+| Platform | SoundFont directory |
+|---|---|
+| Windows | `C:\Users\<USERNAME>\AppData\Local\DOSBox\soundfonts\` |
+| macOS | `~/Library/Preferences/DOSBox/soundfonts/` |
+| Linux | `~/.config/dosbox/soundfonts/` |
+
+**Recommended SoundFonts:**
+
+- **GeneralUser GS** — Best all-round choice for DOS gaming. Well-balanced instruments, good GM/GS compatibility.
+- **FluidR3_GM_GS** — Bundled with MuseScore; fairly close to SC-55 on many games.
+- **Creative 4MB GM/GS/MT** (`4GMGSMT.SF2`) — The SoundFont from Creative AWE32/AWE64 cards; a nostalgic option with SC-55-like character.
+
+<Tip>
+  Append a percentage to the `soundfont` value to adjust volume: `soundfont = Arachno 40` loads the Arachno SoundFont at 40% volume. You can also use the `soundfont_volume` setting (1–800).
+</Tip>
+
+### Using external MIDI hardware
+
+If you own a physical sound module (MT-32, SC-55, or similar), connect it via a USB MIDI interface and use:
+
+```ini
+[midi]
+mididevice = port
+midiconfig  = UM-ONE
+```
+
+Run `MIXER /LISTMIDI` to list the available MIDI ports by name and ID. Name-based identification is preferred because numeric IDs can change when you unplug and reattach USB devices.
+
+### General MIDI configuration reference
+
+<AccordionGroup>
+  <Accordion title="mididevice">
+    Selects the MIDI output destination.
+
+    - `port` (default) — Host OS MIDI port; configure with `midiconfig`
+    - `fluidsynth` — Built-in FluidSynth synthesiser
+    - `mt32` — Built-in Roland MT-32 emulation
+    - `soundcanvas` — Built-in Roland SC-55 emulation (requires Nuked SC55 CLAP plugin)
+    - `coreaudio` *(macOS only)* — macOS built-in MIDI synthesiser
+    - `none` — Disable MIDI output
+  </Accordion>
+  <Accordion title="mpu401">
+    MPU-401 MIDI interface mode.
+
+    - `intelligent` (default) — Full intelligent mode with MIDI sequencer features; required by older MT-32 games
+    - `uart` — Simple UART forwarding; sufficient for General MIDI games and most later titles
+    - `none` — Disable MPU-401 emulation
+  </Accordion>
+  <Accordion title="soundfont (FluidSynth)">
+    Name or path of the SoundFont file. The `.sf2` extension can be omitted. Looked up in the user SoundFont directory, then the `soundfonts` folder in the DOSBox config directory, then common system locations. Run `MIXER /LISTMIDI` to see available SoundFonts.
+
+    Default: `default.sf2`
+  </Accordion>
+  <Accordion title="soundcanvas_model">
+    Roland Sound Canvas model to use.
+
+    - `auto` (default) — Best available model (prefers SC-55 v1.21)
+    - `sc55` — Best available original SC-55
+    - `sc55mk2` — Best available SC-55 Mk II
+    - Exact version: `sc55_121`, `sc55_120`, etc.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Gravis UltraSound
+
+The **Gravis UltraSound (GUS)** was released in 1992 by Canadian joystick maker Advanced Gravis. Its capabilities — wavetable synthesis, stereo sound, up to 32 simultaneous channels — were far ahead of any other consumer card. The trade-off was complete incompatibility with AdLib and Sound Blaster; programs had to be written specifically for the GUS.
+
+Approximately 40 games have native GUS support; roughly 100 more use it through the **UltraMID** MIDI translation layer. The GUS also shone in the demoscene — Second Reality by Future Crew, one of the most celebrated DOS demos ever made, was designed to sound its best on a GUS.
+
+**Era:** 1992–1997 · **Mixer channel:** GUS
+
+### Native GUS games
+
+Native GUS games upload their own instrument samples directly to the card's on-board RAM. No patch files or drivers are required — just enable the GUS and select "Gravis UltraSound" in the game's setup utility.
+
+```ini
+[gus]
+gus = on
+```
+
+### UltraMID games
+
+Games that use **UltraMID** send standard MIDI commands; the UltraMID driver translates them into GUS hardware calls, loading instruments from **patch files** on disk. The patches must be placed in the `MIDI` subdirectory of the directory specified by `ultradir` (default `C:\ULTRASND`):
+
+```
+C:\ULTRASND\
+├── MIDI\
+│   ├── ACBASS.PAT
+│   ├── ACPIANO.PAT
+│   └── ... (instrument patch files)
+└── ULTRAMID.EXE
+```
+
+Some UltraMID titles also require `ULTRAMID.EXE` to be loaded as a TSR before starting the game:
+
+```ini
+[gus]
+gus = on
+ultradir = C:\ULTRASND
+
+[autoexec]
+C:\ULTRASND\ULTRAMID.EXE
+```
+
+<Note>
+  GUS patch files cannot be distributed with DOSBox Staging due to licensing restrictions. Search online for "GUS patch files" or "GUS MIDI patches" — several freely available patch sets exist.
+</Note>
+
+### Running GUS alongside a Sound Blaster
+
+The GUS makes no attempt at Sound Blaster compatibility, so many DOS gamers ran both cards simultaneously. You can do the same in DOSBox Staging: enable the GUS in `[gus]` while keeping `[sblaster]` at its defaults. The default GUS hardware settings (base 240, IRQ 5, DMA 3) are specifically chosen to coexist with the default Sound Blaster settings (base 220, IRQ 7, DMA 1).
+
+### GUS-only configuration
+
+For games where the GUS and Sound Blaster interfere, or to ensure a game uses its native GUS code path exclusively:
+
+```ini
+[sblaster]
+sbtype  = none
+oplmode = none
+
+[gus]
+gus = on
+```
+
+### GUS configuration reference
+
+<AccordionGroup>
+  <Accordion title="gus">
+    Enable Gravis UltraSound emulation. Default `off`.
+
+    Possible values: `on`, `off`
+  </Accordion>
+  <Accordion title="gusbase, gusirq, gusdma">
+    Hardware resource settings for the GUS.
+
+    - `gusbase`: I/O base address. Default `240`. Some games and demos expect `220`.
+    - `gusirq`: IRQ number. Default `5`. Some games expect `11`, but IRQ 11 is incompatible with certain DOS4GW extender versions.
+    - `gusdma`: DMA channel. Default `3`.
+
+    The defaults are chosen to coexist with the Sound Blaster defaults (base 220, IRQ 7, DMA 1).
+  </Accordion>
+  <Accordion title="ultradir">
+    Path to the UltraSound directory. Default `C:\ULTRASND`. Must contain a `MIDI` subdirectory with instrument patch files for UltraMID games. Native GUS games and all demos do not need the patch files.
+  </Accordion>
+  <Accordion title="gus_filter">
+    Filter for the GUS audio output. Default `on` applies a 1st-order low-pass filter at 8 kHz. Can be set to `off` or a custom filter definition.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## PC speaker, Tandy, and IBM PS/1
+
+### PC speaker
+
+The PC speaker is built into virtually every IBM PC compatible. It generates sound by rapidly toggling a simple timer — the result is square-wave beeps with limited frequency control. Despite these limitations, creative programmers found ways to approximate speech and even rough digital audio using rapid on/off switching.
+
+**Era:** 1982–1997 (as last resort) · **Mixer channel:** PCSPEAKER
+
+The PC speaker is enabled by default. It requires no configuration.
+
+<Tip>
+  Enable `reverb = tiny` in the `[mixer]` section to simulate the acoustic character of a small integrated speaker in a room — this is specifically designed for PC speaker, Tandy, PS/1, and LPT DAC devices.
+</Tip>
+
+### Tandy 3 Voice
+
+The Tandy 1000 line of PCs was closely compatible with the IBM PCjr and included a three-channel PSG synthesiser (plus a noise channel) built into the motherboard. This was a significant step up from the PC speaker, and many early games were released in "Tandy" or "PCjr" versions that took advantage of it.
+
+**Era:** 1984–1991 · **Mixer channels:** TANDY (synthesiser), TANDYDAC (digital audio)
+
+```ini
+[tandy]
+tandy = on
+```
+
+The Tandy DAC can play back digitised audio on machines with the appropriate hardware. Enable `tandy = on` to enable both the synthesiser and the DAC.
+
+### IBM PS/1 Audio Card
+
+The IBM PS/1 Audio Card is built into IBM PS/1 machines. It includes a square-wave synthesiser (similar in capability to the Tandy 3 Voice) and a simple DAC for digital audio playback.
+
+**Era:** 1990–1994 · **Mixer channels:** PS1 (synthesiser), PS1DAC (digital audio)
+
+```ini
+[ps1audio]
+ps1audio = on
+```
+
+---
+
+## Other supported devices
+
+<AccordionGroup>
+  <Accordion title="Covox Speech Thing / Disney Sound Source / Stereo-on-1">
+    These are simple parallel-port DAC devices for digital audio output, primarily used for speech and sound effects.
+
+    - **Covox Speech Thing** — 8-bit mono DAC; outputs to the **COVOX** mixer channel
+    - **Disney Sound Source** — Creative Labs variant with an on-chip FIFO buffer; outputs to **DISNEY**
+    - **Stereo-on-1** — Stereo variant of the Covox design; outputs to **STON1**
+
+    ```ini
+    [speaker]
+    lpt_dac = covox   ; or disney, ston1, none
+    ```
+  </Accordion>
+  <Accordion title="Innovation SSI-2001">
+    The **Innovation SSI-2001** (1989) is based on the MOS Technology 6581 SID chip — the same chip used in the Commodore 64. Its distinctive sound was supported by a small number of DOS games.
+
+    **Mixer channel:** INNOVATION
+
+    ```ini
+    [innovation]
+    innovation = on
+    ```
+  </Accordion>
+  <Accordion title="IBM Music Feature Card (IMFC)">
+    The **IBM Music Feature Card** is an ISA card containing a Yamaha FB-01 FM module. It was supported by a limited number of DOS games and music applications.
+
+    **Mixer channel:** IMFC
+
+    ```ini
+    [imfc]
+    imfc = on
+    ```
+  </Accordion>
+</AccordionGroup>

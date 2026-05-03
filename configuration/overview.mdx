@@ -1,0 +1,175 @@
+---
+title: "DOSBox Staging configuration files, syntax, and layering"
+description: "Learn how DOSBox Staging's layered configuration system works — primary config, per-game overrides, portable setups, and .conf file syntax."
+---
+
+DOSBox Staging uses plain-text `.conf` files to control every aspect of emulation. Settings are organized into named sections, and multiple config files can be layered on top of each other so you can keep global preferences in one place and override only what a specific game needs. If you've ever edited an `.ini` file, the format will feel immediately familiar.
+
+## Primary configuration
+
+The primary configuration holds **global settings** for DOSBox Staging. It is always loaded on startup; if it doesn't exist yet, DOSBox Staging creates it with default values the first time you launch the emulator.
+
+The primary config file lives in a platform-specific location:
+
+<Tabs>
+  <Tab title="Windows">
+    ```
+    %LOCALAPPDATA%\DOSBox\dosbox-staging.conf
+    ```
+  </Tab>
+  <Tab title="macOS">
+    ```
+    ~/Library/Preferences/DOSBox/dosbox-staging.conf
+    ```
+  </Tab>
+  <Tab title="Linux">
+    ```
+    ~/.config/dosbox/dosbox-staging.conf
+    ```
+    On Linux, DOSBox Staging also checks other standard XDG path locations.
+  </Tab>
+</Tabs>
+
+Run `dosbox --printconf` to print the exact path on your system. Run `dosbox --editconf` to open it directly in your default text editor.
+
+## Local (per-game) configuration
+
+DOSBox Staging supports **local configurations** — also called per-game configs. If a file named `dosbox.conf` exists in the working directory when DOSBox starts, it is loaded _after_ the primary config, overriding any settings it redefines.
+
+The recommended setup is a separate subfolder for each game, each containing its own `dosbox.conf`:
+
+```
+DOS Games/
+├── Azrael's Tear/
+│   └── dosbox.conf
+├── Dungeon Master/
+│   └── dosbox.conf
+└── Ultima Underworld/
+    └── dosbox.conf
+```
+
+Keep your primary config minimal — it should hold only settings that apply globally (fullscreen mode, master volume, language). Put game-specific hardware settings in each game's local `dosbox.conf`.
+
+<Tip>
+  If you launch DOSBox Staging from a different directory, use `--working-dir <path>` to point it at the right game folder so the local `dosbox.conf` is picked up automatically.
+</Tip>
+
+## Portable setup
+
+Place a `dosbox-staging.conf` file in the same directory as the DOSBox Staging executable to enable portable mode. DOSBox Staging will treat that directory as its configuration root instead of the platform-specific location above. This is useful for running DOSBox from a USB drive or keeping everything self-contained in a single folder.
+
+<Tip>
+  To convert an existing installation to portable mode, move the primary config from its platform-specific location into the directory where the `dosbox` executable lives.
+</Tip>
+
+## Config layering
+
+Configuration sources are applied in this order — later sources override earlier ones:
+
+1. **Primary config** (`dosbox-staging.conf`) — loaded first, unless `--noprimaryconf` is passed.
+2. **Local config** (`dosbox.conf` in the working directory) — loaded next, unless `--nolocalconf` is passed.
+3. **Extra `--conf` files** — additional config files passed on the command line, applied in the order given.
+4. **`--set` overrides** — individual `key=value` pairs set on the command line; these take the highest priority.
+
+```bash
+# Layer a base config, a game-specific config, and a one-off CPU override
+dosbox --conf base.conf --conf game.conf --set cpu_cycles=25000
+```
+
+This layering model means you never need to copy your global settings into every per-game config — only write what actually changes.
+
+## Config file syntax
+
+Config files are divided into sections. Each section starts with a `[section_name]` header. Settings use `key = value` syntax. Lines starting with `#` are comments.
+
+```ini
+[render]
+# Use the sharp shader instead of the default CRT emulation
+shader = sharp
+
+[cpu]
+# Set 486DX2/66 speed
+cpu_cycles = 25000
+
+[autoexec]
+c:
+mixer opl 50
+prince
+```
+
+<Warning>
+  End-of-line comments are **not** supported. Placing a `#` after a value on the same line will cause a parse error:
+
+  ```ini
+  # This is wrong — do not do this
+  cpu_cycles = 25000  # Set 486DX2/66 speed
+  ```
+
+  Put comments on their own line above the setting instead.
+</Warning>
+
+### Common configuration sections
+
+| Section       | Controls |
+|---------------|----------|
+| `[sdl]`       | Window mode, fullscreen, mouse capture, pause behaviour |
+| `[cpu]`       | Emulated CPU type, cycles (speed), core type |
+| `[render]`    | Shader, aspect ratio, integer scaling, resolution |
+| `[mixer]`     | Master volume, reverb, chorus, sample rate |
+| `[midi]`      | MIDI device, SoundFont path, MT-32 ROM |
+| `[sblaster]`  | Sound Blaster model, I/O port, IRQ, DMA |
+| `[dos]`       | Country code, keyboard layout, code page, XMS/EMS/UMB |
+| `[autoexec]`  | DOS commands run automatically at startup |
+
+### The `[autoexec]` section
+
+The `[autoexec]` section is different from every other section — it does not hold `key = value` pairs. Instead, it contains free-form DOS commands that are executed sequentially when DOSBox Staging starts, similar to `AUTOEXEC.BAT` on a real DOS machine.
+
+```ini
+[sdl]
+fullscreen = on
+pause_when_inactive = yes
+
+[mixer]
+reverb = large
+chorus = normal
+
+[autoexec]
+c:
+prince
+exit
+```
+
+<Warning>
+  The `[autoexec]` section **must be the last section** in the config file. Any sections placed after it will be ignored.
+</Warning>
+
+## Changing settings at runtime
+
+Most settings can be changed from the DOS prompt without restarting. There are two forms:
+
+- **Full form**: `CONFIG -set <section> <setting> = <value>` — for example, `CONFIG -set render shader = sharp`
+- **Shortcut form**: `<setting> = <value>` or `<setting> <value>` — for example, `shader sharp`
+
+To see help for any setting, append `/?`:
+
+```
+sbtype /?
+shader /?
+```
+
+Use `CONFIG -wc` to write the current live settings out to a new config file after experimenting at the DOS prompt.
+
+<Note>
+  Some settings — such as `machine` — require a restart to take effect. The setting's help text will say so. Use `CONFIG -r` to restart DOSBox Staging after changing one of these.
+</Note>
+
+## Generating a fresh default config
+
+Delete your primary config and let DOSBox Staging regenerate it with defaults on next launch:
+
+```bash
+dosbox --eraseconf
+```
+
+Or delete the file manually — use `dosbox --printconf` to find its path first.

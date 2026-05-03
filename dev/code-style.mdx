@@ -1,0 +1,172 @@
+---
+title: "DOSBox Staging C++ Code Style and Formatting Guide"
+description: "Covers the C++20 standard, naming conventions, const-correctness, RAII, enum classes, and clang-format integration used in DOSBox Staging."
+---
+
+DOSBox Staging is written in C++20 and follows a consistent set of style rules designed to keep the codebase readable and maintainable. These rules apply to all code in `src/` and `include/` — vendored libraries in `src/libs/` use their own conventions and are excluded. This page describes the language requirements, naming and formatting conventions, and how to integrate `clang-format` into your workflow.
+
+## Language standard
+
+The project targets C++20. When writing new code, follow these guidelines:
+
+- **Use the STL.** Use [STL containers](https://en.cppreference.com/w/cpp/container), `std::filesystem`, `std::thread`, `std::mutex`, `std::atomic`, and other standard library facilities instead of C arrays, C filesystem functions, and OS-specific APIs.
+- **Avoid complex OOP.** Do not use multiple inheritance, deep class hierarchies, or operator overloading. Classes are fine; complexity is not.
+- **Never write `using namespace std;`** — explicit `std::` prefixes prevent ambiguity.
+- **Prefer namespaces** over module-name prefixes for new code.
+- **Use RAII** for resource lifecycle management. Prefer `std::unique_ptr`, `std::shared_ptr`, and `std::weak_ptr`. Avoid raw C pointers except when interfacing with legacy DOSBox code.
+- **Use modern features** — `constexpr`, `static_assert`, lambdas, range-based for loops, and `auto`.
+- **Never use C++ iostreams.** Do not use `std::cout` or `std::cerr`.
+- **Never use C string functions** in new code. Use `std::string` and `std::string_view`.
+- **Avoid exceptions**, with one exception: throwing from a constructor to signal RAII construction failure is acceptable and preferable to two-stage initialisation with a separate `Init()` method. Everywhere else, let errors like `std::bad_alloc` terminate the process.
+- **Avoid complex template metaprogramming.** Simple templates are fine; heavy TMP is not.
+- **Do not micro-optimise.** Optimise for clarity first. Only deviate when you have real-world measurements showing a user-observable bottleneck.
+
+<Note>
+  SDL usage is restricted to window management, OpenGL context creation, input handling, and OS-level audio/MIDI interfaces. Prefer `std::thread`, `std::mutex`, `std::filesystem`, etc., over SDL equivalents wherever the standard library covers the need.
+</Note>
+
+## Naming conventions
+
+DOSBox Staging uses two casing styles:
+
+| Style | Used for |
+|-------|----------|
+| `lower_snake_case` | Function arguments, local variables, struct members, static functions |
+| `UpperCamelCase` | Classes, structs, enums, public non-static functions, type aliases |
+
+Additional naming rules:
+
+- **Do not use Hungarian notation** — never. Prefixes like `b`, `i`, `sz`, `p` are banned.
+- **Include unit-of-measurement suffixes** — `delay_ms`, `cutoff_freq_hz`, `buffer_size_frames`. This is far more useful than Hungarian notation.
+- **Do not uppercase acronyms** — write `PngWriter`, not `PNGWriter`; `HttpServer`, not `HTTPServer`.
+- **Prefer `++i` and `--i`** over post-increment/decrement.
+- **Use `int` by default** for numeric values. Avoid unsigned types and micro-optimising integer sizes. Use `int64_t` for large numbers; use `intXX_t`/`uintXX_t` only for binary protocols; use `size_t` only when it eases STL interop.
+- **Header guards** should follow the pattern `DOSBOX_HEADERNAME_H` or `DOSBOX_MODULENAME_HEADERNAME_H`.
+- **Old public module interfaces** follow `MODULENAME_FunctionName` — do not replace these with namespaces.
+
+## Key code style rules
+
+1. Use `auto` as much as you can.
+2. Be `const`-correct. Keep `const` in sync between declarations and definitions.
+3. Prefer `enum class` over plain `enum`.
+4. Always initialise every variable and struct member.
+5. Struct nesting is encouraged — logical groupings improve readability.
+6. Sort `#include` directives according to the [Google C++ Style Guide](https://google.github.io/styleguide/cppguide.html#Names_and_Order_of_Includes).
+7. Enable narrowing checks in new code by adding `CHECK_NARROWING()` and including `"util/checks.h"`.
+8. Use end-of-line comments sparingly — only for tabular data. Use `//` for block comments.
+9. Surround debug logging with `#if 0` / `#endif` pairs instead of commenting them out.
+
+## Code style examples
+
+The following examples are taken directly from the codebase and illustrate the conventions above.
+
+### Enum class, static function, and public function
+
+```cpp
+enum class CaptureState { Off, Pending, InProgress };
+
+// Static function: lower_snake_case name
+static int32_t get_next_capture_index(const CaptureType type);
+
+// Public function prefixed by module name
+void CAPTURE_AddFrame(const RenderedImage& image, const float frames_per_second);
+```
+
+### Struct with nested struct — always initialise members
+
+```cpp
+// Static inline struct; always initialise members
+static struct {
+    std_fs::path path     = {};
+    bool path_initialised = false;
+
+    struct {
+        CaptureState audio = {};
+        CaptureState midi  = {};
+        CaptureState video = {};
+    } state = {};
+} capture = {};
+
+// Public struct; always initialise members
+struct State {
+    CaptureState raw      = {};
+    CaptureState upscaled = {};
+    CaptureState rendered = {};
+    CaptureState grouped  = {};
+};
+```
+
+### Class definition
+
+```cpp
+class PngWriter {
+public:
+    PngWriter() = default;
+    ~PngWriter();
+
+    // Use const args whenever possible
+    bool InitRgb888(FILE* fp, const uint16_t width, const uint16_t height,
+                    const Fraction& pixel_aspect_ratio,
+                    const VideoMode& video_mode);
+
+    void WriteRow(std::vector<uint8_t>::const_iterator row);
+
+    // Mark methods as const whenever possible
+    bool IsValid() const;
+
+private:
+    // Always initialise members
+    State state = {};
+
+    std_fs::path rendered_path = {};
+};
+```
+
+For additional real-world examples, browse these recently introduced files in the repository:
+
+- `src/audio/clap/` — all files
+- `src/midi/midi_soundcanvas.cpp` and `src/midi/midi_soundcanvas.h`
+- `src/capture/image/` — all files
+
+## Code formatting
+
+New code follows K&R style. Rather than memorising all the details, use `clang-format` with the project's ruleset — it makes formatting unambiguous. The configuration is in `.clang-format` at the repository root.
+
+### Using clang-format from the command line
+
+Format a single file in-place:
+
+```bash
+clang-format -i file.cpp
+```
+
+Format only the C/C++ code touched by your latest commit (preferred):
+
+```bash
+git commit -m "Edit some C++ code"
+./scripts/tools/format-commit.sh
+```
+
+Run `./scripts/tools/format-commit.sh --help` to see available options.
+
+### Vim integration
+
+Download the `clang-format.py` script and make it executable:
+
+```bash
+curl "https://raw.githubusercontent.com/llvm/llvm-project/main/clang/tools/clang-format/clang-format.py" \
+    > ~/.vim/clang-format.py
+chmod +x ~/.vim/clang-format.py
+```
+
+Add the following to your `.vimrc`:
+
+```vim
+" Integrate clang-format tool
+map <C-K> :py3f ~/.vim/clang-format.py<cr>
+imap <C-K> <c-o>:py3f ~/.vim/clang-format.py<cr>
+```
+
+### Visual Studio integration
+
+Install the [ClangFormat extension](https://marketplace.visualstudio.com/items?itemName=LLVMExtensions.ClangFormat) from the Visual Studio Marketplace.

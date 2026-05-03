@@ -1,0 +1,64 @@
+---
+title: "DOSBox Staging: Modern MS-DOS Emulation, Explained"
+description: "Understand what DOSBox Staging is, how it differs from vanilla DOSBox and full PC emulators, and which MS-DOS hardware it can emulate."
+---
+
+DOSBox Staging is a modern continuation of the original DOSBox project, built to run MS-DOS software — games, utilities, and applications — on current Windows, macOS, and Linux systems. Unlike a full-system emulator such as PCem or 86Box, you do not need to install an operating system image or configure virtual hardware from scratch. DOSBox Staging provides a ready-to-use MS-DOS environment the moment you launch it, with built-in emulation of the audio and video hardware that DOS software expects.
+
+## What DOSBox Staging emulates
+
+DOSBox Staging covers the breadth of the IBM PC compatible era — from the early 1980s XT machines through Pentium-era systems of the late 1990s. It also handles the Tandy 1000 and IBM PCjr clones, and can run early self-booting "PC booter" games that predate DOS entirely.
+
+<CardGroup cols={2}>
+  <Card title="Display adapters" icon="display">
+    Hercules monochrome, CGA, EGA, VGA, and SVGA. The CRT shader system reproduces period-accurate phosphor and scanline characteristics automatically.
+  </Card>
+  <Card title="Sound cards" icon="volume-high">
+    PC speaker, Tandy 1000 audio, Creative Music System (CMS/GameBlaster), AdLib OPL2/OPL3, Sound Blaster 1.x through AWE32, AdLib Gold 1000, Gravis UltraSound (GUS), Roland MT-32 and CM-32L, and General MIDI.
+  </Card>
+  <Card title="Storage and media" icon="hard-drive">
+    Virtual hard drives mounted from host folders, floppy disk images, CD-ROM images with CD Audio (including Opus-encoded tracks), and ZIP drive emulation.
+  </Card>
+  <Card title="Input devices" icon="gamepad">
+    Keyboard, two-button and four-axis joysticks, mouse, and serial port devices. DOSBox Staging maps modern USB controllers to the emulated joystick automatically.
+  </Card>
+</CardGroup>
+
+## How DOSBox Staging differs from vanilla DOSBox
+
+The original DOSBox project slowed significantly after 2010, leading to a fragmented ecosystem of forks and custom builds. DOSBox Staging was started in 2020 by Patryk "dreamer" Obara and kcgen to reunify those efforts under a single, actively maintained codebase. It received the blessing of original DOSBox co-author Sjoerd "Harekiet" van der Berg.
+
+<CardGroup cols={2}>
+  <Card title="Active development" icon="code-branch">
+    Regular releases with meaningful feature additions, bug fixes, and hardware accuracy improvements — not a stagnant fork.
+  </Card>
+  <Card title="Modern build tooling" icon="hammer">
+    C++20 codebase, CI on all three platforms, static analysis, unit tests, and vcpkg-managed dependencies.
+  </Card>
+  <Card title="Improved audio accuracy" icon="waveform">
+    Accurate Roland MT-32 emulation via libmt32emu, FluidSynth-based General MIDI, high-quality resampling via SpeexDSP, and a full software mixer with per-channel reverb and chorus.
+  </Card>
+  <Card title="Better defaults" icon="sliders">
+    CRT shader enabled out of the box, correct aspect ratio handling, and sensible audio levels — so games look and sound right without manual tuning.
+  </Card>
+  <Card title="Per-game configuration" icon="file-code">
+    Place a <code>dosbox.conf</code> file in each game folder. DOSBox Staging loads it automatically when launched from that directory, keeping every game's settings isolated.
+  </Card>
+  <Card title="Drop-in compatibility" icon="plug">
+    Existing DOSBox configurations continue to work. DOSBox Staging is a mostly drop-in replacement — you can migrate a large library without rewriting configs.
+  </Card>
+</CardGroup>
+
+## DOSBox Staging vs. full PC emulators
+
+Full system emulators such as PCem and 86Box reproduce an entire IBM PC compatible machine at the hardware level. You select a motherboard, CPU, video card, and sound card, then install MS-DOS from floppy images before running any software. This gives you maximum hardware fidelity and the ability to run operating systems other than DOS, but it also means significant upfront setup work for every configuration you want to maintain.
+
+DOSBox Staging takes a different approach: it emulates only the MS-DOS environment and the hardware components that DOS software actively uses. Games start immediately without a boot sequence. Changing a sound card is a one-line config edit rather than a virtual machine rebuild. This makes DOSBox Staging substantially easier to use for maintaining a large game library.
+
+<Note>
+  If you need cycle-exact hardware accuracy for preservation research or software development, a full PC emulator is the better fit. DOSBox Staging optimises for convenience and playability — with the requirement that supported software runs *at least* as well as on real period hardware.
+</Note>
+
+## A note for users of other DOSBox variants
+
+If you have previously used DOSBox SVN, DOSBox-X, or another fork, you will find that DOSBox Staging behaves similarly for most games. Configuration key names are largely compatible. The main differences are in defaults (the CRT shader, the aspect ratio handling, and the mixer) and in the location of the primary configuration file. See the [installation guide](/installation) for the path to the primary config on each platform.

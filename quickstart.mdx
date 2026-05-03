@@ -1,81 +1,231 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
-icon: 'rocket'
+title: "Quickstart: Run Your First DOS Game with DOSBox Staging"
+description: "Set up a DOS game folder, create a per-game dosbox.conf config file, and launch it with DOSBox Staging in a few straightforward steps."
 ---
 
-## Get started in three steps
+The fastest way to get a DOS game running in DOSBox Staging is to organise its files in a dedicated folder, create a short `dosbox.conf` configuration file alongside them, and then launch DOSBox Staging from that folder. This guide walks you through that process from scratch. No prior knowledge of MS-DOS is required — everything you need to know is explained as you go.
 
-Get your documentation site running locally and make your first customization.
+<Steps>
+  <Step title="Install DOSBox Staging">
+    If you have not already installed DOSBox Staging, follow the [installation guide](/installation) for your platform. Return here once you have a working install.
 
-### Step 1: Set up your local environment
+    On Linux, confirm you are running the correct version:
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+    ```bash
+    dosbox --version
+    ```
 
-### Step 2: Deploy your changes
+    The output should identify `dosbox-staging` and show a version number. If it shows a different DOSBox variant, check your PATH.
+  </Step>
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+  <Step title="Organise your game files into a folder structure">
+    Create a top-level folder to hold all your DOS games — for example, `DOS Games` in your documents directory. Give each game its own subfolder inside it. Avoid placing game folders under `Program Files` on Windows or other system-protected directories.
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+    Inside each game folder, create a `drives` subfolder, and inside that a `c` subfolder. This is the location DOSBox Staging uses as the virtual C drive (the DOS hard drive).
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    Copy your game files into `drives/c`. The resulting structure looks like this:
 
-### Step 3: Go live
+    ```
+    DOS Games/
+    └── My Game/
+        ├── drives/
+        │   └── c/
+        │       ├── GAME.EXE
+        │       └── GAME.CFG
+        └── dosbox.conf       ← you will create this next
+    ```
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+    <Info>
+      The `drives` folder is special: any single-letter subfolder inside it is automatically mounted as the corresponding DOS drive letter when DOSBox Staging starts. You only need `c` for most games, but you can add `d`, `e`, etc. for multi-drive setups.
+    </Info>
+  </Step>
+
+  <Step title="Create a dosbox.conf file">
+    Create a plain text file named `dosbox.conf` directly inside your game folder (not inside `drives/c`). This file tells DOSBox Staging how to configure the emulated environment and which commands to run at startup.
+
+    A minimal working configuration looks like this:
+
+    ```ini
+    [autoexec]
+    c:
+    game
+    ```
+
+    The `[autoexec]` section lists DOS commands that run automatically when DOSBox starts. The two lines above switch to the C drive and launch `GAME.EXE` (you can omit the `.EXE` extension in DOS).
+
+    For a game that requires Sound Blaster audio and a specific CPU speed, a more complete configuration might look like this:
+
+    ```ini
+    [cpu]
+    cycles = 10000
+
+    [sblaster]
+    sbtype = sb16
+    sbbase = 220
+    irq = 5
+    dma = 1
+
+    [autoexec]
+    c:
+    game
+    ```
+
+    Common configuration sections and what they control:
+
+    | Section | Purpose |
+    |---------|---------|
+    | `[cpu]` | CPU type and speed (`cycles = auto` for automatic, or a fixed number) |
+    | `[sblaster]` | Sound Blaster model and I/O port settings |
+    | `[midi]` | Roland MT-32, General MIDI, or FluidSynth output |
+    | `[gus]` | Gravis UltraSound emulation |
+    | `[render]` | Scaler, aspect ratio, and display options |
+    | `[autoexec]` | DOS commands to run automatically on startup |
+
+    <Warning>
+      Some text editors automatically append `.txt` to filenames when saving. Make sure the file is named exactly `dosbox.conf`, not `dosbox.conf.txt`. Use the file manager or `ls` to confirm after saving.
+    </Warning>
+  </Step>
+
+  <Step title="Launch DOSBox Staging from your game folder">
+    How you start DOSBox Staging from the game folder depends on your platform.
+
+    <Tabs>
+      <Tab title="Windows">
+        Right-click on the game folder in Windows Explorer and select **Open with DOSBox Staging** from the context menu.
+
+        Alternatively, right-click on a blank area *inside* the open game folder and select **Open with DOSBox Staging**.
+
+        <Note>
+          The right-click menu entry is added by the DOSBox Staging installer. If you do not see it, confirm you ran the installer rather than extracting the portable ZIP and that you accepted the default installer options.
+        </Note>
+      </Tab>
+      <Tab title="macOS">
+        Copy the **Start DOSBox Staging** icon from the installer `.dmg` into your game folder. Right-click (or Control-click) the icon and select **Open**. Confirm the Gatekeeper dialog the first time.
+
+        On subsequent launches you can double-click the icon directly.
+
+        <Tip>
+          Copy the icon from an existing game folder where you have already completed the Gatekeeper authorization, rather than copying fresh from the `.dmg` each time. This avoids repeating the Gatekeeper steps for every new game.
+        </Tip>
+      </Tab>
+      <Tab title="Linux">
+        Open a terminal, navigate to the game folder, and run:
+
+        ```bash
+        dosbox
+        ```
+
+        DOSBox Staging automatically detects the `dosbox.conf` file in the current directory and applies it.
+
+        To launch a game directly without changing directories, use `--working-dir`:
+
+        ```bash
+        dosbox --working-dir "/home/user/DOS Games/My Game"
+        ```
+
+        You can put this command in a desktop shortcut or shell script for convenient one-click launching.
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Use the DOS prompt (if needed)">
+    If your `dosbox.conf` does not have an `[autoexec]` section — or you want to explore before committing to autostart — DOSBox Staging will drop you to a DOS prompt:
+
+    ```
+    Local directory drives/c/ mounted as C drive
+    Z:\>_
+    ```
+
+    From here, type `C:` and press Enter to switch to the game drive, then `dir` to list files, and type the executable name to launch the game:
+
+    ```
+    Z:\> c:
+    C:\> dir
+    C:\> game
+    ```
+
+    Tab completion works: type the first few letters of a filename and press Tab to auto-complete. Use the Up and Down arrow keys to scroll through command history.
+
+    Type `exit` at the DOS prompt to close DOSBox Staging.
+  </Step>
+</Steps>
+
+## Per-game configuration examples
+
+Below are example `dosbox.conf` files for common scenarios. Copy and adjust them as a starting point.
+
+**Simple game with automatic CPU speed:**
+
+```ini
+[cpu]
+cycles = auto
+
+[autoexec]
+c:
+game
+```
+
+**Game requiring Sound Blaster 16 and Roland MT-32:**
+
+```ini
+[cpu]
+cycles = 25000
+
+[sblaster]
+sbtype = sb16
+sbbase = 220
+irq = 5
+dma = 1
+
+[midi]
+mididevice = mt32
+
+[autoexec]
+c:
+game /s
+```
+
+**Game that needs a slower CPU (early 1980s EGA title):**
+
+```ini
+[cpu]
+cputype = 286
+cycles = 800
+
+[sblaster]
+sbtype = none
+
+[speaker]
+pcspeaker = on
+
+[autoexec]
+c:
+game
+```
+
+**Game with CD-ROM image:**
+
+```ini
+[cpu]
+cycles = 50000
+
+[sblaster]
+sbtype = sb16
+
+[autoexec]
+imgmount d "drives/cd/game.iso" -t cdrom
+c:
+game
+```
+
+<Tip>
+  Every `dosbox.conf` you create inherits the global default settings from the primary configuration file (see [installation](/installation) for its location). You only need to include the settings you want to *override* in your per-game file — you do not need to copy the entire global config.
+</Tip>
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
+Once your first game is running, explore the rest of the documentation to go further:
 
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+- **[Configuration overview](/configuration/overview)** — the full layered configuration system, all sections and keys
+- **[Graphics](/graphics/adapters)** — configure CGA, EGA, VGA, SVGA, and the CRT shader
+- **[Sound](/sound/overview)** — detailed setup for AdLib, Sound Blaster, MT-32, General MIDI, and GUS

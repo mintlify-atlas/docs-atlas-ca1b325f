@@ -1,0 +1,298 @@
+---
+title: 'Display, window, and rendering settings in DOSBox Staging'
+description: 'Configure window size, fullscreen mode, GLSL shaders, CRT emulation, integer scaling, and VSync for the best DOS gaming experience.'
+---
+
+DOSBox Staging opens in a resizable window by default — press `Alt+Enter` to toggle fullscreen at any time. For most games the out-of-the-box display settings need no adjustment, but this page covers how to get the best image quality, how to eliminate screen tearing, and how to unlock the full range of rendering options including CRT shader emulation.
+
+The most important display decision for most users is how to handle frame presentation and VSync. If you have a variable refresh rate monitor (G-Sync, FreeSync, or VRR), the defaults give you perfect frame pacing with no tearing and no further configuration needed.
+
+## Frame presentation and VSync
+
+DOSBox Staging offers two frame presentation strategies, controlled by `presentation_mode` in the `[sdl]` section:
+
+- **`dos-rate`** — Presents frames at the refresh rate of the emulated DOS video mode (e.g., 70 Hz for standard VGA). Ideal for VRR monitors; the display synchronises directly to the emulated refresh rate.
+- **`host-rate`** — Presents the most recent frame at the host display's refresh rate. Intended for fixed refresh rate monitors (typically 60 Hz) with VSync enabled.
+
+The default **`auto`** mode selects `dos-rate` when VSync is off and `host-rate` when VSync is on — the right choice for most setups.
+
+### Refresh rates by DOS graphics standard
+
+Most VGA games run at 70 Hz. On a fixed 60 Hz display, this mismatch causes perceptible judder in scrolling and animation. A VRR monitor eliminates this entirely.
+
+| Graphics standard | Refresh rate |
+|---|---|
+| SVGA and VESA | 70 Hz or higher |
+| VGA (640×480) | 60 Hz |
+| VGA (all other modes) | 70 Hz |
+| CGA, PCjr, Tandy, EGA | 60 Hz |
+| Hercules | 50 Hz |
+
+<Tabs>
+  <Tab title="VRR monitor">
+
+Use the defaults. The `presentation_mode = auto` setting stays on `dos-rate`, and with `vsync = off` your VRR monitor syncs to the emulated refresh rate automatically — perfect pacing, no tearing.
+
+```ini dosbox.conf
+[sdl]
+vsync = off
+presentation_mode = auto
+```
+
+  </Tab>
+  <Tab title="Fixed 60 Hz — fast-paced games">
+
+Enable VSync to eliminate tearing. The `auto` presentation mode switches to `host-rate` accordingly.
+
+```ini dosbox.conf
+[sdl]
+vsync = on
+presentation_mode = auto
+```
+
+  </Tab>
+  <Tab title="Fixed 60 Hz — slower games">
+
+For RPGs, adventures, and strategy titles, tearing is rarely noticeable. The defaults work fine.
+
+```ini dosbox.conf
+[sdl]
+vsync = off
+presentation_mode = auto
+```
+
+  </Tab>
+</Tabs>
+
+<Note>
+For perfectly smooth scrolling in 2D games (e.g., Pinball Dreams, Epic Pinball), you need a VRR monitor running in VRR mode with VSync disabled. The scrolling in 70 Hz VGA games will always appear juddery on 60 Hz fixed refresh rate monitors, even with VSync enabled.
+</Note>
+
+### VSync and tearing — the full picture
+
+Tearing can be introduced at two levels: the game itself may not use VSync (faithfully emulated by DOSBox), and DOSBox may not present frames to the OS in sync with your display. Both must be solved for zero tearing on a fixed refresh rate monitor.
+
+| Game uses VSync? | DOSBox VSync enabled? | Result |
+|---|---|---|
+| Yes | Yes | No tearing |
+| No | Yes | Some tearing (also present on real hardware) |
+| Yes | No | Bad tearing in fast-paced games |
+| No | No | Very bad double tearing in fast-paced games |
+
+On VRR monitors, leave `vsync = off` — the monitor syncs automatically and you get no additional tearing.
+
+<Warning>
+Do not force VSync globally at the GPU driver level (e.g., in Nvidia Control Panel). Leave the global VSync settings at "let the application decide" and configure VSync only via the DOSBox Staging `vsync` setting. Forcing global VSync causes problems with virtually all emulators.
+</Warning>
+
+## Rendering output backends
+
+The `output` setting in `[sdl]` controls the rendering backend:
+
+- **`opengl`** (default) — OpenGL backend with full shader support. This is the preferred option and required for CRT shaders and image adjustments.
+- **`texture`** — SDL's texture backend with bilinear interpolation. Use as a fallback if OpenGL is unavailable.
+- **`texturenb`** — SDL's texture backend with nearest-neighbour interpolation (no bilinear).
+
+```ini dosbox.conf
+[sdl]
+output = opengl
+```
+
+## Shaders
+
+Shaders are configured in the `[render]` section via the `shader` setting. They require the `opengl` output backend.
+
+### Adaptive CRT shaders
+
+DOSBox Staging includes adaptive CRT shaders that automatically select period-appropriate monitor emulation based on the current video mode:
+
+<AccordionGroup>
+
+<Accordion title="crt-auto (default)">
+
+Prioritises developer intent and how people experienced games at the time. VGA games appear double-scanned (as on a real VGA monitor), EGA games appear single-scanned with thicker scanlines, and so on — regardless of the `machine` setting. This is the default.
+
+```ini dosbox.conf
+[render]
+shader = crt-auto
+```
+
+</Accordion>
+
+<Accordion title="crt-auto-machine">
+
+Emulates a fixed CRT monitor for the video adapter configured via the `machine` setting. CGA and EGA modes on a VGA machine always appear double-scanned with chunky pixels, as on a real VGA adapter.
+
+```ini dosbox.conf
+[render]
+shader = crt-auto-machine
+```
+
+</Accordion>
+
+<Accordion title="crt-auto-arcade">
+
+A fantasy option that emulates a 15 kHz arcade or home computer monitor with thick scanlines in low-resolution modes. Fun for playing DOS VGA ports of Amiga and Atari ST games.
+
+```ini dosbox.conf
+[render]
+shader = crt-auto-arcade
+```
+
+</Accordion>
+
+<Accordion title="crt-auto-arcade-sharp">
+
+A sharper arcade variant that retains the thick scanlines but with the sharpness of a typical PC monitor.
+
+```ini dosbox.conf
+[render]
+shader = crt-auto-arcade-sharp
+```
+
+</Accordion>
+
+</AccordionGroup>
+
+### Other shaders
+
+| Shader | Description |
+|---|---|
+| `sharp` | Sharp pixel-rectangle upscaling. Recommended for those who don't want CRT emulation. |
+| `bilinear` | Bilinear interpolation upscaling (blurry). |
+| `nearest` | Nearest-neighbour interpolation (sharpest, but uneven pixels). |
+| `interpolation/catmull-rom` | High-quality Catmull-Rom interpolation. |
+| `scaler/advmame2x`, `advmame3x` | AdvMAME pixel art scalers. |
+| `scaler/xbr-lv2-3d`, `xbr-lv3` | XBR edge-directed scalers. |
+
+```ini dosbox.conf
+[render]
+shader = sharp
+```
+
+<Tip>
+Run `dosbox --list-shaders` to see the full list of available shaders. Shaders live in subdirectories; use the full path (e.g., `interpolation/catmull-rom` or `scaler/xbr-lv3`). The `.glsl` extension can be omitted.
+</Tip>
+
+### Shader presets
+
+Shaders can be configured with presets that override their default parameters, using the `SHADER_NAME:PRESET_NAME` format:
+
+```ini dosbox.conf
+[render]
+shader = crt/crt-hyllian:vga-4k
+```
+
+The adaptive CRT shaders automatically select the appropriate preset based on the graphics standard and viewport resolution. Preset files are INI-format files that can override shader settings and parameters:
+
+```ini preset-file.ini
+[settings]
+force_single_scan = yes
+force_no_pixel_doubling = yes
+
+[parameters]
+BEAM_MIN_WIDTH     = 0.70
+SCANLINES_STRENGTH = 0.65
+```
+
+## Integer scaling
+
+The `integer_scaling` setting constrains the horizontal or vertical scaling factor to integer values when upscaling. This avoids uneven scanlines and interference artifacts with CRT shaders.
+
+- **`auto`** (default) — Vertical integer scaling enabled only for adaptive CRT shaders, with refinements: 3.5x and 4.5x are also allowed, and integer scaling is disabled above 5.0x.
+- **`vertical`** — Constrain vertical scaling to integers. Recommended for third-party shaders.
+- **`horizontal`** — Constrain horizontal scaling to integers.
+- **`off`** — No integer scaling; the image fills the viewport while maintaining aspect ratio.
+
+```ini dosbox.conf
+[render]
+integer_scaling = vertical
+```
+
+## Window settings
+
+Window and display settings live in the `[sdl]` section:
+
+```ini dosbox.conf
+[sdl]
+fullscreen = off
+fullscreen_mode = standard
+window_size = default
+window_decorations = on
+window_position = auto
+```
+
+| Setting | Default | Description |
+|---|---|---|
+| `fullscreen` | `off` | Start in fullscreen mode. |
+| `fullscreen_mode` | `standard` | `standard` or `forced-borderless` (Windows only). |
+| `window_size` | `default` | `small`/`medium`/`large`, `WxH` in logical units, or `default`. |
+| `window_decorations` | `on` | Show or hide the window title bar and borders. |
+| `window_position` | `auto` | Initial window position as `X,Y` in logical units. |
+| `window_transparency` | `0` | Transparency from 0 (opaque) to 90 (nearly transparent). |
+| `display` | `0` | Which monitor to use on multi-display setups. |
+
+## Image adjustments
+
+Image adjustments live in the `[render]` section and work like the controls on an old CRT monitor. They require the `opengl` output backend.
+
+```ini dosbox.conf
+[render]
+crt_color_profile = auto
+brightness = 45
+contrast = 65
+gamma = 0
+saturation = 0
+color_temperature = auto
+```
+
+### CRT colour profiles
+
+The `crt_color_profile` setting emulates the phosphor chemistry of different CRT monitor types:
+
+| Profile | Description |
+|---|---|
+| `auto` (default) | Selects the period-appropriate profile based on video mode. |
+| `p22` | Most common PC monitor phosphors. Warmer, slightly desaturated. |
+| `smpte-c` | American broadcast standard. Close to P22 with tighter colour tolerances. |
+| `ebu` | European broadcast standard. Found in Sony BVM/PVM professional monitors. |
+| `philips` | Philips home computer monitors (e.g., Commodore 1084S). Warm, yellowish whites at ~6100 K. |
+| `trinitron` | Sony Trinitron. Punchy, vivid colours with cool blue-white at ~9300 K. |
+| `none` | Raw colours without any profile transform. |
+
+### Automatic adjustment values by video mode
+
+| Video mode | CRT profile | Colour temp (K) | Black level |
+|---|---|---|---|
+| Monochrome | None | 6500 | 0 |
+| Composite | SMPTE-C | 6500 | 0.53 |
+| CGA / PCjr | P22 | 9300 | 0.65 |
+| EGA / Tandy | P22 | 9300 | 0.60 |
+| VGA / SVGA | P22 | 7800 | 0 |
+| Arcade | Philips | 6500 | 0.50 |
+
+## Dedithering and deinterlacing
+
+### Dedithering
+
+Many DOS games used checkerboard dither patterns to simulate more colours than their limited palettes could display. The `dedithering` setting detects these patterns and blends them into solid colours:
+
+```ini dosbox.conf
+[render]
+dedithering = on
+```
+
+<Note>
+Dedithering is not a more authentic representation — on real CRT monitors, dither patterns were clearly visible. For a more authentic look, use `shader = crt-auto` instead.
+</Note>
+
+### Deinterlacing
+
+Many 1990s DOS games displayed full-motion video using interlaced rendering. On modern flat screens the alternating black lines look distracting. The `deinterlacing` setting reconstructs the missing lines:
+
+```ini dosbox.conf
+[render]
+deinterlacing = medium
+```
+
+Strength options: `light`, `medium`, `strong`, `full`.

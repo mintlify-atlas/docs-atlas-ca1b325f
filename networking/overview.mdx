@@ -1,0 +1,317 @@
+---
+title: 'Networking: IPX, Serial Ports, Ethernet & Multiplayer'
+description: 'Set up DOSBox Staging networking: IPX LAN play, modem and null-modem serial links, NE2000 Ethernet emulation, and multiplayer for DOS games.'
+---
+
+DOSBox Staging emulates the full range of networking hardware DOS games relied on: the **IPX** protocol for LAN-party classics, **serial port modems and null-modem cables** for head-to-head dial-up play, and an **NE2000 Ethernet card** for full TCP/IP internet access inside DOS. Whether you're running a two-player Doom session with a friend across the internet or bringing up a DOS BBS for nostalgic tinkering, the networking stack has you covered.
+
+<Tabs>
+  <Tab title="IPX">
+
+## IPX networking
+
+IPX was the dominant LAN protocol for DOS multiplayer gaming throughout the 1990s. Games like Doom, Duke Nukem 3D, Warcraft II, and Command & Conquer all used it for LAN-party play. DOSBox Staging tunnels IPX packets over modern UDP/IP, so you can use these games over the internet or any local network without special hardware.
+
+### Enabling IPX
+
+Add the `[ipx]` section to your config and set `ipx = true`:
+
+```ini
+[ipx]
+ipx = true
+```
+
+IPX is disabled by default.
+
+### Connecting players with IPXNET
+
+Once IPX is enabled, use the `IPXNET` command at the DOS prompt to manage connections.
+
+<Steps>
+  <Step title="Host starts the server">
+    On the host machine, at the DOS prompt:
+
+    ```text
+    IPXNET STARTSERVER
+    ```
+
+    This starts an IPX server on the default UDP port. The host's IP address is what other players will connect to.
+  </Step>
+  <Step title="Clients connect">
+    On each client machine, at the DOS prompt:
+
+    ```text
+    IPXNET CONNECT 203.0.113.5
+    ```
+
+    Replace `203.0.113.5` with the host's actual IP address or hostname.
+  </Step>
+  <Step title="Launch the game">
+    Once all players are connected, start the game and select the IPX or network play option from the game's own menu.
+  </Step>
+</Steps>
+
+<Note>
+  The host needs the IPX UDP port to be reachable from the internet. If the host is behind a router or NAT, set up port forwarding for that port. If neither player can forward a port, a VPN such as [ZeroTier](https://www.zerotier.com/) or [Tailscale](https://tailscale.com/) lets both players join the same virtual network with no port forwarding needed.
+</Note>
+
+  </Tab>
+  <Tab title="Serial ports">
+
+## Serial ports
+
+DOSBox Staging emulates four COM (serial) ports — the same ones DOS programs used for modems, serial mice, and direct cable connections. Serial port emulation is configured in the `[serial]` section.
+
+```ini
+[serial]
+serial1 = modem listenport:5000
+serial2 = dummy
+serial3 = disabled
+serial4 = disabled
+```
+
+### Device types
+
+Each port (`serial1` through `serial4`) can be set to one of the following device types:
+
+| Value | Description |
+|-------|-------------|
+| `dummy` | Emulate the port with no device attached (default for serial1, serial2) |
+| `disabled` | Disable the port entirely (default for serial3, serial4) |
+| `mouse` | Attach a serial mouse |
+| `modem` | Emulate a Hayes-compatible dial-up modem |
+| `nullmodem` | Emulate a direct null-modem cable link |
+| `direct` | Emulate a direct serial connection to a real host port |
+
+### Modem mode
+
+Modem mode emulates a Hayes-compatible dial-up modem. One player listens for incoming connections; the other dials their IP address using the game's built-in dial-up interface — the same `ATDT` commands real modems used, now routed over the internet.
+
+**Host** — listens on a port:
+
+```ini
+[serial]
+serial1 = modem listenport:5000 sock:1
+```
+
+**Client** — dials the host from within the game using the address:
+
+```text
+ATDT 203.0.113.5:5000
+```
+
+If the game's phone number field doesn't accept IP addresses, use a **phonebook file** to map a fake number to the real address. The default file is `phonebook.txt`:
+
+```text
+5551234 203.0.113.5:5000
+```
+
+Now dialling `5551234` in the game connects to the host.
+
+### Null-modem mode
+
+Null-modem mode creates a direct serial link between two DOSBox instances, skipping the modem handshake entirely. It's the simplest option when both players can coordinate outside the game.
+
+**Host** — listens on a port:
+
+```ini
+[serial]
+serial1 = nullmodem port:1250 sock:1
+```
+
+**Client** — connects to the host:
+
+```ini
+[serial]
+serial1 = nullmodem server:203.0.113.5 port:1250 sock:1
+```
+
+The connection is established as soon as both sides start DOSBox — no dialling required. The game sees a standard serial connection on COM1.
+
+### ENet transport (recommended for internet play)
+
+Both modem and null-modem modes default to TCP. Adding `sock:1` switches to **ENet**, a reliable UDP-based transport. For internet play, ENet is strongly preferred — it has lower latency than TCP and handles unreliable connections better. Both sides must use the same transport.
+
+### Serial mouse
+
+To attach a serial mouse to COM1 (for games that specifically require one rather than a PS/2 mouse):
+
+```ini
+[serial]
+serial1 = mouse
+```
+
+The mouse model is determined by the `com_mouse_model` setting in `[mouse]`, or can be overridden per port with the `model` parameter.
+
+### Phonebook file
+
+```ini
+[serial]
+phonebookfile = phonebook.txt
+```
+
+Maps fake phone numbers to real addresses for games with restrictive number input. Default: `phonebook.txt`.
+
+  </Tab>
+  <Tab title="Ethernet / TCP-IP">
+
+## Ethernet and TCP/IP
+
+DOSBox Staging can emulate a **Novell NE2000-compatible network card**, giving the emulated DOS machine full TCP/IP networking. The virtual network provides DHCP, so the emulated machine gets its own IP address just like a real LAN host.
+
+This is useful for running DOS TCP/IP software, BBS door games, or network-aware applications that go beyond simple IPX multiplayer.
+
+<Warning>
+  Setting this up requires installing a DOS NE2000 packet driver, a DHCP client, and a TCP/IP stack inside DOS. It is a niche feature intended for users comfortable with vintage networking configuration.
+</Warning>
+
+### Enabling the NE2000 card
+
+```ini
+[ethernet]
+ne2000 = true
+```
+
+The virtual network has the following fixed properties:
+
+| Address | Role |
+|---------|------|
+| `10.0.2.15` | First IP provided by DHCP (your DOS machine's IP) |
+| `10.0.2.2` | Gateway and DHCP service |
+| `10.0.2.3` | Virtual DNS server |
+| `255.255.255.0` | Subnet mask |
+
+### NE2000 card settings
+
+```ini
+[ethernet]
+ne2000  = true
+nicbase = 300
+nicirq  = 3
+macaddr = AC:DE:48:88:99:AA
+```
+
+<Note>
+  The default `nicbase` of `300` is usually safe. Avoid `220` and `240`, which are assigned to Sound Blaster and Gravis UltraSound by default. IRQs 3 and 5 may also conflict with `serial2` and the GUS — adjust if you use both.
+</Note>
+
+### Port forwarding
+
+To make services running inside DOS reachable from the host (or the internet), use the port forwarding settings:
+
+```ini
+[ethernet]
+tcp_port_forwards = 80 443
+udp_port_forwards = 27910-27960
+```
+
+**TCP format options:**
+
+| Format | Example | Description |
+|--------|---------|-------------|
+| `port ...` | `21 80 443` | Forward specific ports |
+| `host:guest ...` | `8080:80` | Map host port to a different guest port |
+| `start-end ...` | `27910-27960` | Forward a range of ports |
+| `hstart-hend:gstart-gend` | `8040-8080:20-60` | Map port ranges |
+
+The same format applies to `udp_port_forwards`.
+
+  </Tab>
+  <Tab title="Multiplayer setup">
+
+## Multiplayer gaming
+
+DOS multiplayer games used two main approaches: **serial connections** (modem or null modem) for head-to-head play, and **IPX** for LAN parties. DOSBox Staging emulates both over modern internet connections.
+
+### IPX LAN games
+
+Classic LAN-party titles such as Duke Nukem 3D, Warcraft II, and Command & Conquer use IPX. Setup is straightforward:
+
+<Steps>
+  <Step title="Enable IPX in config">
+    Add this to your `dosbox.conf`:
+
+    ```ini
+    [ipx]
+    ipx = true
+    ```
+  </Step>
+  <Step title="Host starts the server">
+    On the host machine, at the DOS prompt:
+
+    ```text
+    IPXNET STARTSERVER
+    ```
+  </Step>
+  <Step title="Clients connect">
+    On each client, at the DOS prompt:
+
+    ```text
+    IPXNET CONNECT <host-ip-address>
+    ```
+  </Step>
+  <Step title="Start the game">
+    Launch the game on all machines and select the LAN/IPX multiplayer option.
+  </Step>
+</Steps>
+
+### Serial modem games
+
+Games like Doom, Rise of the Triad, and Terminal Velocity supported dial-up modem play. DOSBox Staging's modem emulation routes these connections over TCP or ENet:
+
+<Steps>
+  <Step title="Host config">
+    ```ini
+    [serial]
+    serial1 = modem listenport:5000 sock:1
+    ```
+  </Step>
+  <Step title="Client dials in-game">
+    Use the game's modem dial interface to dial the host's IP and port:
+
+    ```text
+    ATDT 203.0.113.5:5000
+    ```
+
+    If the game rejects IP addresses in the phone number field, add an entry to `phonebook.txt`:
+
+    ```text
+    5551234 203.0.113.5:5000
+    ```
+
+    Then dial `5551234` in the game.
+  </Step>
+</Steps>
+
+### Serial null-modem games
+
+For the simplest head-to-head connection without modem handshaking:
+
+<Steps>
+  <Step title="Host config">
+    ```ini
+    [serial]
+    serial1 = nullmodem port:1250 sock:1
+    ```
+  </Step>
+  <Step title="Client config">
+    ```ini
+    [serial]
+    serial1 = nullmodem server:203.0.113.5 port:1250 sock:1
+    ```
+  </Step>
+  <Step title="Launch">
+    Start DOSBox on both machines. The connection is established automatically — no in-game dialling needed.
+  </Step>
+</Steps>
+
+### Port forwarding and firewalls
+
+In both serial and IPX multiplayer, the host needs the chosen port to be reachable from the internet. If behind a router or NAT, set up port forwarding for that single port (UDP for `sock:1` or IPX connections, TCP otherwise).
+
+<Tip>
+  If neither player can forward a port, a VPN such as [ZeroTier](https://www.zerotier.com/) or [Tailscale](https://tailscale.com/) is the easiest alternative. Both players join the same virtual network and connect using their VPN-assigned addresses — no port forwarding needed.
+</Tip>
+
+  </Tab>
+</Tabs>

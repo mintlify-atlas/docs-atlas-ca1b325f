@@ -1,0 +1,104 @@
+---
+title: "Sound in DOSBox Staging: All Supported Audio Devices"
+description: "Learn how DOS games used sound hardware, which audio devices DOSBox Staging emulates, and how to choose the right device for each game era."
+---
+
+DOS audio is one of the most technically interesting parts of emulation. Throughout the DOS era — roughly 1981 to 1997 — a dozen competing sound cards from different manufacturers coexisted on the market, each with incompatible hardware interfaces and wildly varying capabilities. Game developers had to add direct support for every popular device, and the "best" option changed several times as new hardware emerged. DOSBox Staging emulates nearly 20 distinct audio devices, from the humble PC speaker to high-end MIDI synthesisers, giving you access to the full palette of DOS-era sound.
+
+<Note>
+  Most DOS sound cards require correct **I/O base address**, **IRQ**, and **DMA** settings to function. When a game's setup utility asks for these values, they must match the DOSBox Staging configuration. The Sound Blaster defaults are: base address `220`, IRQ `7`, DMA `1`.
+</Note>
+
+## How DOS games used sound
+
+### Synthesised sound
+
+Before CD-ROMs made large storage practical, music in DOS games was stored as sequences of notes rather than recorded audio. A synthesiser chip in the sound card read those notes and generated the actual waveforms in real time. An IBM PC with 640 KB of RAM could store barely a minute of low-quality audio — far too little for a full game soundtrack — but a MIDI-style note sequence for an hour of music might fit in a few tens of kilobytes.
+
+The **AdLib Music Synthesizer Card** (1987) established FM synthesis as the baseline for DOS game music. It used a Yamaha OPL2 chip to produce multichannel sound, and became so widely supported that virtually all games from 1990 onwards included AdLib compatibility. Later, the **Roland MT-32** (1987) and **General MIDI** standard (1991) raised the ceiling further with sample-based synthesis capable of convincingly reproducing real instruments.
+
+### Digital audio
+
+Digital audio — storing and replaying recorded sound as raw sample data — required much more memory and storage than synthesised sound. The **Sound Blaster 1.0** (1989) was the first consumer card to combine digital audio playback with FM synthesis. Early cards were limited to 8-bit mono at modest sample rates; the **Sound Blaster 16** (1992) introduced CD-quality stereo 16-bit audio. Digital audio is used for speech, sound effects, and — once CD-ROMs became common — music tracks.
+
+## Selecting the best audio device
+
+The best choice of audio device depends on when the game was released. The lists below rank options from most to least desirable for each era.
+
+### Early DOS era (1982–1987)
+
+- **Tandy 3 Voice** — three-channel PSG synthesis; only available in PCjr/Tandy versions of games
+- **PC speaker** — built into every IBM PC compatible; square-wave beeps only
+
+### Late 80s / early 90s era (1987–1992)
+
+- **Roland MT-32** — top-tier MIDI synthesis; required by most Sierra and LucasArts adventures of the period
+- **Sound Blaster 1.0** — 8-bit mono digital audio + OPL2 + CMS; the card that transformed DOS gaming
+- **AdLib** — OPL2 FM synthesis; universally supported fallback for music
+- **Tandy 3 Voice** — better than PC speaker for games with Tandy versions
+- **Game Blaster / CMS** — Creative Music System; stereo square-wave synthesis
+- **IBM PS/1 Audio Card** — built into IBM PS/1 machines; square-wave synthesis + DAC
+- **PC speaker** — last resort
+
+### Mid-90s / late DOS era (1992–1997)
+
+- **General MIDI** — Roland Sound Canvas SC-55 became the gold standard; best music in most 1993–1997 titles
+- **Roland MT-32** — still excellent for games that support it
+- **Gravis UltraSound** — wavetable synthesis; best-in-class for games and demos with native GUS support
+- **Sound Blaster 16** — 16-bit stereo digital audio; widest compatibility
+- **Sound Blaster Pro / Pro 2.0** — 8-bit stereo + OPL3; choose for games targeting these cards specifically
+
+## Supported sound devices
+
+<AccordionGroup>
+  <Accordion title="AdLib / OPL FM synthesis">
+    The **AdLib Music Synthesizer Card** uses the Yamaha OPL2 chip for multichannel FM synthesis. Supported by virtually all DOS games from 1990 onwards as a minimum baseline. DOSBox emulates OPL2, dual OPL2, OPL3, and the OPL3-based AdLib Gold 1000 using the highly accurate NukedOPL library.
+
+    The OPL synthesiser outputs to the **OPL** mixer channel. See [Sound devices](/sound/sound-devices) for configuration.
+  </Accordion>
+  <Accordion title="Sound Blaster family">
+    The **Sound Blaster** line by Creative Technology dominated DOS gaming from 1989 onwards. DOSBox emulates all major revisions: Sound Blaster 1.0, 2.0, Pro, Pro 2.0, and 16, plus the Game Blaster (CMS). Each model has different digital audio capabilities and synthesiser configurations.
+
+    The Sound Blaster 16 is the default emulated card — it provides the widest compatibility. Digital audio outputs to the **SB** mixer channel; the OPL synthesiser outputs to **OPL**. See [Sound devices](/sound/sound-devices) for model-by-model details.
+  </Accordion>
+  <Accordion title="Roland MT-32">
+    The **Roland MT-32** (1987) uses Linear Arithmetic (LA) synthesis to produce a wide range of realistic and synthesised sounds. It was the standard for high-end DOS game audio from about 1988 to 1992, and is required for authentic playback of most Sierra On-Line and LucasArts adventure games of that period.
+
+    DOSBox Staging includes full MT-32 emulation. You must supply ROM files from the original hardware. See [Sound devices](/sound/sound-devices) for setup instructions.
+  </Accordion>
+  <Accordion title="General MIDI / Roland Sound Canvas">
+    **General MIDI** (GM) standardised instrument assignments so that music written for one device sounds recognisable on any other. The **Roland SC-55 Sound Canvas** was the reference device that DOS game composers used from 1991 onwards.
+
+    DOSBox Staging supports SC-55 emulation via the **Nuked SC55 CLAP** plugin (requires SC-55 ROMs) and a built-in **FluidSynth** synthesiser that plays any SoundFont `.sf2` file. See [Sound devices](/sound/sound-devices) for setup.
+  </Accordion>
+  <Accordion title="Gravis UltraSound">
+    The **Gravis UltraSound (GUS)** (1992) offered wavetable synthesis, stereo sound, and up to 32 simultaneous channels — far ahead of competing consumer cards. About 40 games have native GUS support; roughly 100 more use it via the UltraMID MIDI translation layer.
+
+    The GUS makes no attempt at Sound Blaster compatibility, so many users ran it alongside a Sound Blaster. DOSBox Staging supports both configurations. See [Sound devices](/sound/sound-devices) for setup.
+  </Accordion>
+  <Accordion title="PC speaker, Tandy, and IBM PS/1">
+    **PC speaker** — present in every IBM PC compatible; generates square waves by switching a timer on and off. All games support it as a last resort.
+
+    **Tandy 3 Voice** — three-channel PSG synthesis built into Tandy 1000 machines and the IBM PCjr. Sounds noticeably better than the PC speaker; many early games shipped a separate Tandy version.
+
+    **IBM PS/1 Audio Card** — built into IBM PS/1 machines; includes a square-wave synthesiser and a simple DAC. Similar capability to Tandy audio.
+  </Accordion>
+  <Accordion title="Other supported devices">
+    - **Creative Music System (CMS) / Game Blaster** — stereo square-wave synthesis; Creative Technology's first card (1987)
+    - **Covox Speech Thing / Disney Sound Source** — simple parallel-port DAC devices for digital audio output
+    - **Innovation SSI-2001** — based on the SID chip from the Commodore 64
+    - **IBM Music Feature Card (IMFC)** — ISA card with a Yamaha FB-01 FM module
+    - **ESS ESFM** — enhanced OPL3-compatible FM synthesis found on ESS AudioDrive cards (mid-90s)
+  </Accordion>
+</AccordionGroup>
+
+## Explore sound topics
+
+<CardGroup cols={2}>
+  <Card title="Mixer" icon="sliders" href="/sound/mixer">
+    Adjust per-channel volume, reverb, chorus, and crossfeed. Control everything from the DOS prompt with the MIXER command.
+  </Card>
+  <Card title="Sound devices" icon="microchip" href="/sound/sound-devices">
+    Complete configuration reference for every emulated sound device: AdLib, Sound Blaster, MT-32, General MIDI, GUS, and more.
+  </Card>
+</CardGroup>

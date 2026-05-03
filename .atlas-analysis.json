@@ -1,0 +1,123 @@
+{
+  "projectType": "general",
+  "projectName": "DOSBox Staging",
+  "projectDescription": "A modern continuation of DOSBox that emulates the MS-DOS operating environment on current hardware, with advanced features, improved audio/video accuracy, and cross-platform support.",
+  "theme": "maple",
+  "primaryColor": "#10c988",
+  "lightColor": "#333333",
+  "darkColor": "#d0b8a2",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "User Guide",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/overview",
+              "configuration/command-line",
+              "configuration/commands"
+            ]
+          },
+          {
+            "group": "Graphics",
+            "pages": [
+              "graphics/adapters",
+              "graphics/display-rendering",
+              "graphics/aspect-ratios"
+            ]
+          },
+          {
+            "group": "Sound",
+            "pages": [
+              "sound/overview",
+              "sound/mixer",
+              "sound/sound-devices"
+            ]
+          },
+          {
+            "group": "Input & Networking",
+            "pages": [
+              "input/overview",
+              "networking/overview"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "advanced/storage",
+              "advanced/http-api",
+              "advanced/windows-31",
+              "advanced/capture"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Developer Guide",
+        "groups": [
+          {
+            "group": "Building",
+            "pages": [
+              "dev/build-linux",
+              "dev/build-macos",
+              "dev/build-windows"
+            ]
+          },
+          {
+            "group": "Contributing",
+            "pages": [
+              "dev/contributing",
+              "dev/code-style",
+              "dev/testing"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "dev/architecture",
+              "dev/http-api-reference"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "MS-DOS and Windows 3.1 emulation on modern hardware (Windows, macOS, Linux)",
+    "High-fidelity audio emulation: AdLib, Sound Blaster, Roland MT-32, General MIDI, Gravis UltraSound",
+    "Accurate graphics emulation: Hercules, CGA, EGA, VGA, SVGA, 3dfx Voodoo",
+    "Flexible layered configuration system (global + per-game configs)",
+    "HTTP REST API for external tool integration and memory inspection",
+    "Modern build system (CMake + vcpkg) with C++20 codebase",
+    "Cross-platform: Windows, macOS, Linux (x86_64 and ARM)",
+    "Drop-in replacement for legacy DOSBox with backward-compatible configurations",
+    "Advanced shader and rendering pipeline with aspect-ratio correction",
+    "Networking support: IPX, serial ports, TCP/IP via libslirp"
+  ],
+  "publicApiSurface": [
+    "dosbox [PATH] — launch emulator with a game directory, disk image, or executable",
+    "--conf <config_file> — load a configuration file",
+    "--set <setting>=<value> — override a configuration setting at launch",
+    "--printconf — print the path to the primary config file",
+    "--editconf — open primary config in the default text editor",
+    "--list-glshaders — list available GLSL shaders",
+    "--list-keyboard-layouts — list supported keyboard layouts",
+    "GET /api/cpu — read x86 CPU registers via HTTP API",
+    "GET /api/memory/:offset/:len — read emulated memory via HTTP API",
+    "GET /api/dos/files — list DOS filesystem via HTTP API",
+    "[sdl] section — window, fullscreen, and input settings",
+    "[cpu] section — CPU type, cycles, and core settings",
+    "[render] section — graphics scaling, shaders, and aspect ratio",
+    "[mixer] section — audio volume and sample rate settings",
+    "[midi] section — MIDI device and soundfont configuration"
+  ]
+}

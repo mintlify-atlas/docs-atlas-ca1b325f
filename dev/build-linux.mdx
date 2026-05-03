@@ -1,0 +1,302 @@
+---
+title: "Building DOSBox Staging on Linux: A Developer Guide"
+description: "Step-by-step instructions for compiling DOSBox Staging on Linux using either system-provided libraries or vcpkg to manage dependencies."
+---
+
+DOSBox Staging uses CMake as its primary build system on Linux. Two approaches are available: building against your distribution's system libraries (preferred for packaging) or using vcpkg to fetch and compile all dependencies from source (the method used for official release binaries). Both require a C++20-capable compiler such as GCC or Clang.
+
+## Building using system libraries
+
+This method links against libraries installed via your distribution's package manager. It is the recommended approach when creating a distro package.
+
+<Note>
+  When packaging for a distribution, pass `-DOPT_TESTS=OFF` to CMake to skip building unit tests and remove the GTest dependency.
+</Note>
+
+### Install build tools and dependencies
+
+<Tabs>
+  <Tab title="Ubuntu / Debian">
+    ```bash
+    sudo apt install build-essential git cmake pkg-config \
+        libasound2-dev libfluidsynth-dev libgtest-dev \
+        libiir1-dev libpng-dev libmt32emu-dev \
+        libgl-dev libopusfile-dev libsdl2-dev libsdl2-image-dev \
+        libasio-dev libspeexdsp-dev zlib1g-dev python3-venv
+    ```
+  </Tab>
+  <Tab title="Fedora">
+    ```bash
+    sudo dnf install gcc-c++ git cmake pkg-config \
+        alsa-lib-devel fluidsynth-devel gtest-devel \
+        iir1-devel libpng-devel mt32emu-devel \
+        mesa-libGL-devel opusfile-devel SDL2-devel SDL2_image-devel \
+        asio-devel speexdsp-devel zlib-ng-devel python3
+    ```
+  </Tab>
+  <Tab title="Arch / Manjaro">
+    ```bash
+    sudo pacman -S gcc git cmake pkg-config \
+        alsa-lib fluidsynth gtest \
+        iir1 libpng libmt32emu \
+        mesa opusfile sdl2 sdl2_image \
+        asio speexdsp zlib python
+    ```
+  </Tab>
+  <Tab title="openSUSE">
+    ```bash
+    sudo zypper install gcc gcc-c++ git cmake pkg-config \
+        alsa-devel fluidsynth-devel gtest \
+        libpng-devel libmt32emu-devel \
+        libSDL2-devel asio-devel \
+        opusfile-devel speexdsp libXi-devel python3
+    ```
+  </Tab>
+</Tabs>
+
+### Clone and build
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/dosbox-staging/dosbox-staging.git
+    cd dosbox-staging
+    ```
+  </Step>
+  <Step title="Configure and compile">
+    Choose a build type. For day-to-day development use the debug build; for performance testing use the release build.
+
+    <CodeGroup>
+      ```bash debug build
+      cmake --preset=debug-linux
+      cmake --build --preset=debug-linux
+      ```
+
+      ```bash release build
+      cmake --preset=release-linux
+      cmake --build --preset=release-linux
+      ```
+    </CodeGroup>
+  </Step>
+  <Step title="Run DOSBox Staging">
+    <CodeGroup>
+      ```bash debug build
+      ./build/debug-linux/dosbox
+      ```
+
+      ```bash release build
+      ./build/release-linux/dosbox
+      ```
+    </CodeGroup>
+  </Step>
+</Steps>
+
+---
+
+## Building using vcpkg
+
+The vcpkg method compiles all dependencies from source and produces binaries that only depend on glibc, making them portable across distributions. This is the method used for the project's official release packages.
+
+### Install build tools
+
+```bash
+sudo apt-get install git build-essential pkg-config cmake curl ninja-build \
+             autoconf autoconf-archive automake bison libtool libgl1-mesa-dev \
+             libsdl2-dev python3-venv
+```
+
+### Set up vcpkg
+
+<Steps>
+  <Step title="Clone vcpkg">
+    ```bash
+    cd ~
+    git clone https://github.com/microsoft/vcpkg.git
+    ```
+  </Step>
+  <Step title="Bootstrap vcpkg">
+    ```bash
+    cd vcpkg
+    ./bootstrap-vcpkg.sh -disableMetrics
+    ```
+  </Step>
+  <Step title="Export the VCPKG_ROOT variable">
+    Add the following line to your `~/.bashrc` so it persists across sessions:
+
+    ```bash
+    export VCPKG_ROOT=$HOME/vcpkg
+    ```
+  </Step>
+</Steps>
+
+### Clone and build
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    cd ~
+    git clone https://github.com/dosbox-staging/dosbox-staging.git
+    cd dosbox-staging
+    ```
+  </Step>
+  <Step title="Configure and compile">
+    <CodeGroup>
+      ```bash debug build
+      cmake --preset=debug-linux-vcpkg
+      cmake --build --preset=debug-linux-vcpkg
+      ```
+
+      ```bash release build
+      cmake --preset=release-linux-vcpkg
+      cmake --build --preset=release-linux-vcpkg
+      ```
+    </CodeGroup>
+  </Step>
+  <Step title="Run DOSBox Staging">
+    <CodeGroup>
+      ```bash debug build
+      ./build/debug-linux-vcpkg/dosbox
+      ```
+
+      ```bash release build
+      ./build/release-linux-vcpkg/dosbox
+      ```
+    </CodeGroup>
+  </Step>
+</Steps>
+
+---
+
+## Unit tests
+
+Unit tests are built by default. To skip them (useful when packaging), pass `-DOPT_TESTS=OFF` at configure time:
+
+```bash
+cmake --preset=release-linux -DOPT_TESTS=OFF
+```
+
+To run the full test suite, use the same preset you built with:
+
+```bash
+ctest --preset debug-linux
+```
+
+To run a single named test suite:
+
+```bash
+ctest --preset debug-linux -R DOS_FilesTest
+```
+
+To run a single test case:
+
+```bash
+ctest --preset debug-linux -R DOS_FilesTest.DOS_MakeName_Basic_Failures
+```
+
+Wildcards and regular expressions are supported:
+
+```bash
+ctest --preset debug-linux -R "DOS_FilesTest.DOS_MakeName_*"
+```
+
+Pass `-V` to see DOSBox Staging log output during the test run:
+
+```bash
+ctest --preset debug-linux -R DOS_FilesTest.DOS_MakeName_Basic_Failures -V
+```
+
+You can also run the test binary directly for coloured output or to attach gdb on a crash:
+
+```bash
+build/debug-linux/tests/dosbox_tests --gtest_filter=DOS_FilesTest.DOS_MakeName_Basic_Failures
+```
+
+---
+
+## Sanitizer builds
+
+Two mutually exclusive sanitizer modes are available:
+
+- `OPT_SANITIZER` — detects memory errors and undefined behaviour
+- `OPT_THREAD_SANITIZER` — detects data races
+
+Enable a sanitizer by passing the flag at configure time:
+
+```bash
+cmake -DOPT_SANITIZER=ON --preset=release-linux
+cmake --build --preset=release-linux
+```
+
+<Tip>
+  Sanitizer availability and performance are platform-dependent. You may need to adjust the `SANITIZER_FLAGS` variable in `CMakeLists.txt` for your environment. Refer to your compiler's documentation on the `-fsanitize` option for details.
+</Tip>
+
+---
+
+## Offline documentation
+
+Self-contained HTML documentation can be built as part of the CMake build. The output is placed at `build/<preset>/resources/docs/` and matches the documentation bundled with release packages.
+
+Documentation building is **off by default**. To enable it:
+
+```bash
+cmake --preset=debug-linux -DOPT_DOCUMENTATION=ON
+cmake --build --preset=debug-linux
+```
+
+### Prerequisites
+
+Python 3 with the `venv` module is required. On Debian and Ubuntu, `venv` is shipped as a separate package:
+
+```bash
+sudo apt-get install python3-venv
+```
+
+No other manual setup is required — the build creates a Python virtual environment automatically and installs all MkDocs dependencies into it.
+
+### Rebuilding after content changes
+
+Changes to files under `website/docs/` do not trigger an automatic rebuild. To rebuild documentation after editing:
+
+<CodeGroup>
+  ```bash using the rebuild target
+  cmake --build --preset debug-linux --target rebuild_documentation
+  ```
+
+  ```bash invalidating the build stamp
+  touch website/mkdocs.yml
+  ```
+</CodeGroup>
+
+To force a complete documentation rebuild from scratch:
+
+```bash
+rm build/debug-linux/_mkdocs_build_stamp
+```
+
+To remove all MkDocs caches from the source tree:
+
+```bash
+cmake --build --preset debug-linux --target clean-manual
+```
+
+<Note>
+  If Python is unavailable or missing required modules, the build proceeds without documentation. A warning is shown during CMake configuration, but the build is never aborted.
+</Note>
+
+---
+
+## Building old versions
+
+Prior to release 0.83.0, DOSBox Staging used the Meson build system:
+
+```bash
+meson setup -Dbuildtype=release build
+meson compile -C build
+```
+
+Prior to release 0.77.0, Autotools was used:
+
+```bash
+./scripts/build.sh -c gcc -t release
+```

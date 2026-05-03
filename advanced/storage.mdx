@@ -1,0 +1,220 @@
+---
+title: "Managing virtual drives and disk images in DOSBox Staging"
+description: "Mount host directories and disk images as DOS drives using MOUNT. Covers floppy, hard disk, and CD-ROM images, drive letters, and overlay mounts."
+---
+
+DOSBox Staging maps host directories and disk images to DOS drive letters, giving you complete control over how a game sees the file system. You can mount a folder as a hard disk, point drive A: at a floppy image, and assign a CD-ROM image to drive D: — all matching the exact layout a DOS game expects.
+
+## How DOS uses drives
+
+DOS identifies storage devices by drive letters, not by names or mount points. Each letter (A: through Z:) maps to exactly one storage device. There is no single unified file tree — each drive is its own independent root.
+
+The letter assignments follow a fixed convention:
+
+- **A:** and **B:** are reserved for floppy disk drives.
+- **C:** is the first hard disk partition.
+- **D:** (or the first letter after the hard disk partitions) is typically the CD-ROM drive.
+
+DOSBox Staging lets you assign letters freely, but following these conventions matters because many games hardcode them — particularly C: for the hard disk and D: for the CD-ROM.
+
+DOSBox Staging also provides two built-in drives:
+
+- **Z:** contains the built-in programs and commands (`MOUNT`, `CONFIG`, `MIXER`, etc.) and is always in the PATH.
+- **Y:** contains bundled third-party utilities (`DEBUG`, `DELTREE`, `XCOPY`) with `Y:\DOS` added to the PATH automatically.
+
+## Automounting
+
+The easiest way to set up drives is automounting. Place your game files in a `drives/` directory and DOSBox Staging mounts them on startup.
+
+### Directory structure
+
+Create lowercase single-letter subdirectories under `drives/`:
+
+```
+drives/
+  c/          → mounted as C:
+  d/          → mounted as D:
+```
+
+### Floppy and CD-ROM images
+
+Automounting also detects disk images:
+
+- Place `.img` or `.ima` floppy images in `drives/a/` or `drives/b/`.
+- Place `.iso`, `.cue`/`.bin`, or `.mds`/`.mdf` CD-ROM images in a drive directory (e.g., `drives/d/`).
+
+DOSBox Staging selects the appropriate mount type automatically when image files are detected.
+
+### Drive configuration files
+
+Each drive directory can have an accompanying `[letter].conf` file placed alongside it:
+
+```ini
+[drive]
+type     = dir
+label    = MYGAME
+readonly = off
+```
+
+| Option           | Values                                     | Description                                           |
+|------------------|--------------------------------------------|-------------------------------------------------------|
+| `type`           | `dir`, `overlay`, `floppy`, `cdrom`, `iso` | Drive type. `iso` is an alias for `cdrom`.            |
+| `label`          | any string                                 | Custom volume label.                                  |
+| `path`           | PATH specification                         | Extend the DOS PATH (e.g., `%path%;c:\tools`).        |
+| `override_drive` | single letter (a–y)                        | Mount to a different drive letter.                    |
+| `readonly`       | `on`, `off`                                | Mount as read-only.                                   |
+| `verbose`        | `on`, `off`                                | Show mount output during startup.                     |
+
+## Manual mounting
+
+Use the `MOUNT` command at the DOS prompt or in the `[autoexec]` section of your config file. Type `MOUNT /?` at the DOS prompt for the full reference.
+
+<Note>
+  `IMGMOUNT` is deprecated. Use `MOUNT` for both directories and disk images.
+</Note>
+
+### Mounting directories
+
+Mount a host directory as a DOS hard disk:
+
+```doscon
+mount C /path/to/game/files
+```
+
+By default, directory-mounted hard disks report approximately 250 MB of free space. Use `-freesize` to override this (in MB for hard disks, KB for floppies):
+
+```doscon
+mount C /path/to/game -freesize 1024
+```
+
+To set a volume label — required by some copy-protected games:
+
+```doscon
+mount A /path/to/floppy -t floppy -label DISK1
+```
+
+### Overlay mounts
+
+An overlay mount adds a write layer on top of an existing drive. Modified files are stored in the overlay directory, leaving the original data unchanged:
+
+```doscon
+mount C /path/to/game
+mount C /path/to/saves -t overlay
+```
+
+This is useful for keeping game files pristine while allowing save data to be written.
+
+### Mounting floppy images
+
+```doscon
+mount A floppy.img -t floppy
+```
+
+Supported formats: `.img`, `.ima` (raw sector images). The format is detected automatically from the file size.
+
+#### Floppy disk formats
+
+| Size  | Type  | Capacity | Notes                            |
+|-------|-------|----------|----------------------------------|
+| 5.25" | SS/DD | 160 KB   | Original IBM PC (1981)           |
+| 5.25" | SS/DD | 180 KB   | 9 sectors/track variant          |
+| 5.25" | DS/DD | 320 KB   | Double-sided (1982)              |
+| 5.25" | DS/DD | 360 KB   | Standard 5.25" DD                |
+| 5.25" | DS/HD | 1.2 MB   | Standard 5.25" HD                |
+| 3.5"  | DS/DD | 720 KB   | Standard 3.5" DD                 |
+| 3.5"  | DS/HD | 1.44 MB  | Standard 3.5" HD                 |
+| 3.5"  | DS/HD | 1.68 MB  | Microsoft DMF                    |
+| 3.5"  | DS/HD | 1.72 MB  | Microsoft DMF (82-track variant) |
+| 3.5"  | DS/ED | 2.88 MB  | Extra Density (rare)             |
+
+### Mounting CD-ROM images
+
+```doscon
+mount D game.cue -t iso
+mount D game.iso -t iso
+mount D game.mds -t iso
+```
+
+Supported formats:
+
+- **CUE/BIN** — CUE sheet with data and optional audio tracks.
+- **ISO** — Standard ISO 9660 images (data only).
+- **MDS/MDF** — Alcohol 120% disc images.
+
+For games with CD-DA music, use CUE/BIN or MDS/MDF images that include audio tracks.
+
+### Mounting multiple images
+
+Mount multiple images at the same drive letter for multi-disk games:
+
+```doscon
+mount A disk1.img disk2.img disk3.img -t floppy
+```
+
+Wildcard patterns are also supported:
+
+```doscon
+mount D cd/*.cue -t iso
+```
+
+Press **Ctrl+F4** (or **Cmd+F4** on macOS) to cycle between mounted images during gameplay.
+
+### Mounting hard disk images
+
+```doscon
+mount C hdd.img -t hdd
+```
+
+For images that require explicit geometry:
+
+```doscon
+mount C hdd.img -t hdd -chs 304,64,63
+```
+
+FAT12, FAT16, and FAT32 filesystems are supported.
+
+### Read-only mounts
+
+```doscon
+mount D /path/to/shared -ro
+```
+
+### Booting from images
+
+For bootable disk images (real MS-DOS, Windows 9x, etc.), mount with `-fs none` using a drive number instead of a letter:
+
+```doscon
+mount 0 boot.img -t floppy -fs none
+boot -l a
+```
+
+```doscon
+mount 2 win95.img -t hdd -fs none -chs 304,64,63
+boot -l c
+```
+
+Drive numbers 0 and 1 correspond to floppy drives A: and B:; 2 and 3 correspond to hard disks C: and D:.
+
+<Note>
+  Some early games (roughly 1981–1986) bypassed DOS entirely and booted directly from floppy disk. These "booter" games require the `boot` command shown above rather than `mount`.
+</Note>
+
+### Unmounting drives
+
+```doscon
+mount -u D
+```
+
+## DOS filesystem limitations
+
+DOS filenames follow the **8.3** convention: a maximum of 8 characters for the name and 3 for the extension (e.g., `DUKE3D.EXE`). Names are case-insensitive and cannot contain spaces. DOSBox Staging automatically truncates long filenames to 8.3 format when mounting host directories.
+
+The FAT16 filesystem limits individual partitions to **2 GB**. Larger hard disk images must be split into multiple partitions. DOSBox Staging also supports FAT12 (floppy disks) and FAT32 (Windows 95/98).
+
+## Configuration settings
+
+Storage-related settings live in the `[dosbox]` section of your config file:
+
+- `automount` — enable or disable the `drives/` automounting behaviour.
+- `hard_disk_speed` — emulated hard disk transfer speed.
+- `floppy_disk_speed` — emulated floppy transfer speed.

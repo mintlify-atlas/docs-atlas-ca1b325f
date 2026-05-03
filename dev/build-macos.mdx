@@ -1,0 +1,220 @@
+---
+title: "Building DOSBox Staging on macOS: A Developer Guide"
+description: "How to compile DOSBox Staging on macOS using Xcode Command Line Tools and Homebrew or MacPorts to install the required dependencies."
+---
+
+Building DOSBox Staging on macOS requires Apple's Xcode Command Line Tools and a package manager — either Homebrew or MacPorts — to supply the necessary libraries. The project recommends Homebrew with Apple's Clang compiler, since Apple's Core SDKs are designed for use with Apple's own Clang fork.
+
+<Note>
+  CMake support on macOS is currently an experimental, internal work in progress and is not ready for general use. The instructions below use the Meson build system.
+</Note>
+
+---
+
+## Step 1: Install Xcode Command Line Tools
+
+Before installing Homebrew or MacPorts, you must install Apple's Xcode Command Line Tools and accept the license agreement.
+
+<Steps>
+  <Step title="Install the command line tools">
+    ```bash
+    xcode-select --install
+    ```
+
+    Follow the on-screen prompts and accept the license agreement.
+  </Step>
+  <Step title="Install any pending software updates">
+    Open **Apple menu > System Preferences > Software Update**. If an update for the Xcode Command Line Tools is listed, click **Update Now** before continuing.
+  </Step>
+</Steps>
+
+---
+
+## Step 2: Install dependencies
+
+<Tabs>
+  <Tab title="Homebrew">
+    <Steps>
+      <Step title="Install Homebrew">
+        Follow the instructions at [https://brew.sh](https://brew.sh) to install Homebrew.
+      </Step>
+      <Step title="Install build dependencies">
+        ```bash
+        brew install cmake ccache meson sdl2 asio opusfile \
+                     pkg-config python3
+        ```
+      </Step>
+      <Step title="Add Homebrew to your shell path">
+        ```bash
+        echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> "$HOME"/.zprofile
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="MacPorts">
+    <Steps>
+      <Step title="Install MacPorts">
+        Follow the instructions at [https://www.macports.org/install.php](https://www.macports.org/install.php).
+      </Step>
+      <Step title="Install build dependencies">
+        ```bash
+        sudo port install cmake ccache meson libsdl2 asio opusfile \
+                          glib2 pkgconfig python311
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+---
+
+## Step 3: Clone and build
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/dosbox-staging/dosbox-staging.git
+    cd dosbox-staging
+    ```
+  </Step>
+  <Step title="Configure and compile">
+    ```bash
+    meson setup build
+    meson compile -C build
+    ```
+
+    The compiled binary is `build/dosbox`.
+  </Step>
+  <Step title="Run DOSBox Staging">
+    ```bash
+    ./build/dosbox
+    ```
+
+    The first time you run it, macOS will display several permission dialogs asking for access to folders. Allow access to all of them.
+  </Step>
+</Steps>
+
+---
+
+## Offline documentation
+
+Self-contained HTML documentation can optionally be built as part of the CMake build. The output appears at `build/<preset>/Resources/docs/` and matches the documentation bundled with release packages.
+
+Documentation building is **off by default**. To enable it:
+
+```bash
+cmake --preset=debug-macos -DOPT_DOCUMENTATION=ON
+cmake --build --preset=debug-macos
+```
+
+### Prerequisites
+
+Python 3 with the `venv` module is required. Both ship with the Xcode Command Line Tools and with Homebrew, so no extra packages are needed on macOS.
+
+### Rebuilding after content changes
+
+Changes to files under `website/docs/` do not trigger an automatic rebuild. To rebuild documentation after editing:
+
+<CodeGroup>
+  ```bash using the rebuild target
+  cmake --build --preset debug-macos --target rebuild_documentation
+  ```
+
+  ```bash invalidating the build stamp
+  touch website/mkdocs.yml
+  ```
+</CodeGroup>
+
+To force a complete documentation rebuild from scratch:
+
+```bash
+rm build/debug-macos/_mkdocs_build_stamp
+```
+
+To remove all MkDocs caches from the source tree:
+
+```bash
+cmake --build --preset debug-macos --target clean-manual
+```
+
+<Note>
+  If Python is unavailable or missing required modules, the build proceeds without documentation. A warning is shown during CMake configuration, but the build is never aborted.
+</Note>
+
+---
+
+## Sanitizer builds (CMake)
+
+Two mutually exclusive sanitizer modes are available:
+
+- `OPT_SANITIZER` — detects memory errors and undefined behaviour
+- `OPT_THREAD_SANITIZER` — detects data races
+
+Enable a sanitizer by passing the flag at configure time:
+
+```bash
+cmake -DOPT_SANITIZER=ON --preset=release-macos
+cmake --build --preset=release-macos
+```
+
+<Tip>
+  Sanitizer availability and performance are highly dependent on your specific CPU, OS version, and compiler. You may need to adjust the `SANITIZER_FLAGS` variable in `CMakeLists.txt`. Refer to the `clang` documentation on `-fsanitize` for details.
+</Tip>
+
+---
+
+## FluidSynth and Slirp for local development
+
+FluidSynth and Slirp are built separately as dynamic libraries and injected into official release packages by CI. For local development you need to supply them manually if you are working on MIDI or NE2000 networking features.
+
+<Steps>
+  <Step title="Download the prebuilt libraries">
+    Download the latest release ZIP from the [dosbox-staging-ext](https://github.com/dosbox-staging/dosbox-staging-ext) project.
+  </Step>
+  <Step title="Unpack and place the libraries">
+    Unpack the ZIP. It contains separate libraries for debug and release builds. Copy the contents to a location outside the CMake build directory, for example `$REPO_DIR/lib`.
+  </Step>
+  <Step title="Symlink the libraries into the build directory">
+    After a successful build using the `debug-macos` preset:
+
+    ```bash
+    cd $REPO_DIR
+    ln -s $PWD/lib/debug build/debug-macos/Debug/lib
+    xattr -r -d com.apple.quarantine lib
+    ```
+
+    <Warning>
+      The `xattr` command is required. Without it, macOS Gatekeeper will prevent DOSBox Staging from loading the dynamic libraries at runtime when FluidSynth (`mididevice = fluidsynth`) or NE2000 networking (`ne2000 = on`) is enabled.
+    </Warning>
+  </Step>
+</Steps>
+
+You only need to do this once after a successful build. If you delete the CMake build directory, repeat the symlink step.
+
+---
+
+## Installing clang-format
+
+The project uses [clang-format](https://clang.llvm.org/docs/ClangFormat.html) to enforce consistent code style.
+
+<Tabs>
+  <Tab title="Homebrew">
+    ```bash
+    brew install clang-format
+    ```
+  </Tab>
+  <Tab title="MacPorts">
+    Install the full clang-20 package (this takes a while):
+
+    ```bash
+    sudo port install clang-20
+    ```
+
+    Then create a symlink so `clang-format` resolves to the MacPorts binary (assuming `~/bin` is in your `PATH`):
+
+    ```bash
+    ln -s /opt/local/bin/clang-format-mp-20 ~/bin/clang-format
+    ```
+  </Tab>
+</Tabs>

@@ -1,0 +1,90 @@
+---
+title: "Capturing screenshots, video, and audio in DOSBox Staging"
+description: "Take screenshots in upscaled, rendered, or raw format; record lossless AVI video; capture audio and MIDI using built-in shortcuts and config settings."
+---
+
+DOSBox Staging can capture screenshots, record video, and record audio directly from the emulator without any third-party tools. All captures are saved to the `capture` directory in the current working directory by default. Screenshots support three formats — upscaled, rendered (post-shader), and raw framebuffer — so you can always get exactly the image you want.
+
+## Screenshots
+
+Press **Ctrl+F5** (or **Cmd+F5** on macOS) to take a screenshot using the default format configured by the `default_image_capture_formats` setting.
+
+Three formats are available:
+
+| Format | Description | Filename suffix |
+|--------|-------------|-----------------|
+| `upscaled` | Bilinear-sharp upscaling with correct aspect ratio; vertical scaling factor is always an integer. | *(none)* |
+| `rendered` | The post-rendered, post-shader image exactly as displayed on screen. | `-rendered` |
+| `raw` | The raw framebuffer contents at 1:1 pixel aspect ratio (always square pixels). | `-raw` |
+
+<Tip>
+  You can configure multiple formats at once. When `default_image_capture_formats = upscaled rendered`, pressing **Ctrl+F5** saves both an upscaled and a rendered screenshot simultaneously.
+</Tip>
+
+## Video capture
+
+Press **Ctrl+F7** (or **Cmd+F7** on macOS) to start recording. Press the same shortcut again to stop. Video is saved as a lossless AVI file using the ZMBV (Zip Motion Blocks Video) codec.
+
+## Audio capture
+
+Press **Ctrl+F6** (or **Cmd+F6** on macOS) to start recording. Press the same shortcut again to stop. The audio output from all emulated sound devices is mixed and saved as a WAV file.
+
+Raw MIDI and OPL output can also be captured for post-processing game music outside the emulator.
+
+## Keyboard shortcut reference
+
+| Action | Windows / Linux | macOS |
+|--------|----------------|-------|
+| Take screenshot | Ctrl+F5 | Cmd+F5 |
+| Start / stop video recording | Ctrl+F7 | Cmd+F7 |
+| Start / stop audio recording | Ctrl+F6 | Cmd+F6 |
+| Cycle mounted disk images | Ctrl+F4 | Cmd+F4 |
+
+## Capture output location
+
+By default, captures are saved to a `capture/` subdirectory in the current working directory. You can change this with the `capture_dir` setting.
+
+<Tabs>
+  <Tab title="Windows">
+    If you launch DOSBox Staging from a shortcut or the Start Menu, the current working directory is typically the folder where `dosbox.exe` is located. Check the shortcut's **Start in** field to confirm.
+
+    Example default path:
+
+    ```
+    C:\Users\YourName\AppData\Local\DOSBox-Staging\capture\
+    ```
+  </Tab>
+  <Tab title="macOS">
+    When launched from the Applications folder or via the command line, the current working directory is typically your home directory or the directory from which you ran DOSBox Staging.
+
+    Example default path:
+
+    ```
+    ~/capture/
+    ```
+  </Tab>
+  <Tab title="Linux">
+    The capture directory is created relative to the directory from which you launched DOSBox Staging.
+
+    Example default path:
+
+    ```
+    ~/capture/
+    ```
+  </Tab>
+</Tabs>
+
+## Configuration settings
+
+Capture settings are configured in the `[capture]` section of your config file:
+
+```ini
+[capture]
+capture_dir                   = capture
+default_image_capture_formats = upscaled
+```
+
+| Setting                        | Default    | Description |
+|--------------------------------|------------|-------------|
+| `capture_dir`                  | `capture`  | Directory where screenshots, video, audio, MIDI, and OPL captures are saved. |
+| `default_image_capture_formats` | `upscaled` | Format(s) used by the default screenshot shortcut. Specify multiple formats separated by spaces (e.g., `upscaled rendered`). |

@@ -1,0 +1,264 @@
+---
+title: "DOSBox Staging command-line flags and options reference"
+description: "Complete reference for every DOSBox Staging command-line flag — config loading, runtime overrides, discovery helpers, mapper, security, and more."
+---
+
+DOSBox Staging accepts a rich set of command-line flags that let you control configuration loading, override individual settings without editing any files, discover available shaders and keyboard layouts, and manage the key mapper — all before the emulator even opens a window. This page documents every supported flag.
+
+## Simple launch
+
+Pass a path directly to DOSBox Staging and it figures out what to do:
+
+```bash
+# Mount a directory as C: and open the DOS prompt
+dosbox /path/to/game/
+
+# Mount the parent directory and run the executable
+dosbox /path/to/game/GAME.EXE
+
+# Boot from a disk image
+dosbox disk.img
+```
+
+**PATH behaviour:**
+- A **directory** is mounted as the C: drive.
+- A **DOS executable** (`.bat`, `.com`, `.exe`) — its parent directory is mounted as C: and the program runs immediately. DOSBox exits when the program exits.
+- A **bootable disk image** (`.ima`, `.img`) is booted directly.
+- A **CD-ROM image** (e.g., `.iso`) is mounted as the D: drive.
+
+## Configuration flags
+
+These flags control which config files are loaded and how settings are applied. See [Config layering](/configuration/overview#config-layering) for how these interact.
+
+<AccordionGroup>
+  <Accordion title="--conf <config_file>">
+    Load an additional configuration file. Settings in `<config_file>` override settings from files loaded earlier. You can specify `--conf` multiple times; files are applied in the order given.
+
+    ```bash
+    dosbox --conf base.conf --conf game.conf
+    ```
+  </Accordion>
+
+  <Accordion title="--set <setting>=<value>">
+    Override a single configuration setting. `--set` overrides take the highest priority — they override every config file. You can specify `--set` multiple times.
+
+    ```bash
+    dosbox --set mididevice=fluidsynth --set soundfont=gm.sf2
+    dosbox --set machine=ega --set cpu_cycles=5000
+    ```
+  </Accordion>
+
+  <Accordion title="--printconf">
+    Print the full path of the primary configuration file and exit. Useful for locating the file before opening it manually.
+
+    ```bash
+    dosbox --printconf
+    ```
+  </Accordion>
+
+  <Accordion title="--editconf">
+    Open the primary configuration file in the system's default terminal text editor (the editor set in the `$EDITOR` environment variable on Linux/macOS).
+
+    ```bash
+    dosbox --editconf
+    ```
+  </Accordion>
+
+  <Accordion title="--eraseconf">
+    Delete the primary configuration file. DOSBox Staging will create a fresh one with default settings on the next launch.
+
+    ```bash
+    dosbox --eraseconf
+    ```
+  </Accordion>
+
+  <Accordion title="--noprimaryconf">
+    Skip loading the primary configuration file entirely. DOSBox Staging will also not create one if it doesn't exist. Useful for fully isolated test runs.
+
+    ```bash
+    dosbox --noprimaryconf --conf game.conf
+    ```
+  </Accordion>
+
+  <Accordion title="--nolocalconf">
+    Skip loading a local `dosbox.conf` from the current working directory, even if one exists.
+
+    ```bash
+    dosbox --nolocalconf
+    ```
+  </Accordion>
+
+  <Accordion title="--working-dir <path>">
+    Set the working directory for DOSBox Staging. DOSBox Staging behaves as if it were started from `<path>`. If a local `dosbox.conf` exists in that directory, it is loaded after the primary config.
+
+    ```bash
+    dosbox --working-dir "/home/user/DOS Games/Dungeon Master"
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Startup behaviour flags
+
+These flags control what happens immediately after DOSBox Staging initializes.
+
+<AccordionGroup>
+  <Accordion title="-c <command>">
+    Run a DOS command before processing the `PATH` argument and before executing `[autoexec]` commands. Specify multiple `-c` flags to run multiple commands in sequence.
+
+    ```bash
+    dosbox -c "MOUNT C /games/doom" -c "C:" -c "DOOM.EXE"
+    ```
+  </Accordion>
+
+  <Accordion title="--noautoexec">
+    Skip executing the commands in any `[autoexec]` sections from all loaded config files.
+
+    ```bash
+    dosbox --noautoexec
+    ```
+  </Accordion>
+
+  <Accordion title="--exit">
+    Exit DOSBox Staging after all `-c` commands and `[autoexec]` sections have finished running.
+
+    ```bash
+    dosbox --exit -c "INSTALL.EXE"
+    ```
+  </Accordion>
+
+  <Accordion title="--fullscreen">
+    Start DOSBox Staging in fullscreen mode, equivalent to setting `fullscreen = on` in `[sdl]`.
+
+    ```bash
+    dosbox --fullscreen /path/to/game/
+    ```
+  </Accordion>
+
+  <Accordion title="--lang <lang_file>">
+    Start with the specified language file. Pass `auto` to detect the language from the host operating system (this is the default behaviour).
+
+    ```bash
+    dosbox --lang de
+    dosbox --lang auto
+    ```
+  </Accordion>
+
+  <Accordion title="--machine <type>">
+    Emulate a specific machine type. The machine type affects both the emulated video hardware and sound hardware.
+
+    ```bash
+    dosbox --machine ega
+    dosbox --machine tandy
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Discovery flags
+
+Use these flags to explore what resources are available on your system. Output is printed to the terminal and DOSBox Staging exits immediately after.
+
+<AccordionGroup>
+  <Accordion title="--list-countries">
+    List all supported countries with their numeric codes. Use these codes with the `country` config setting in `[dos]`.
+
+    ```bash
+    dosbox --list-countries
+    ```
+  </Accordion>
+
+  <Accordion title="--list-layouts">
+    List all supported keyboard layouts with their codes. Use these codes with the `keyboard_layout` config setting in `[dos]`.
+
+    ```bash
+    dosbox --list-layouts
+    ```
+  </Accordion>
+
+  <Accordion title="--list-code-pages">
+    List all bundled code pages (screen fonts) available for use.
+
+    ```bash
+    dosbox --list-code-pages
+    ```
+  </Accordion>
+
+  <Accordion title="--list-shaders">
+    List all available GLSL shaders and their file paths. Use shader names with the `shader` config setting in `[render]`.
+
+    ```bash
+    dosbox --list-shaders
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Mapper flags
+
+<AccordionGroup>
+  <Accordion title="--startmapper">
+    Launch the key mapper GUI directly on startup, before entering the DOS environment.
+
+    ```bash
+    dosbox --startmapper
+    ```
+  </Accordion>
+
+  <Accordion title="--erasemapper">
+    Delete the default mapper file, resetting all key bindings to their defaults.
+
+    ```bash
+    dosbox --erasemapper
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Security and networking flags
+
+<AccordionGroup>
+  <Accordion title="--securemode">
+    Enable secure mode. This disables the `MOUNT` and `IMGMOUNT` commands inside the DOS environment, preventing the guest from accessing the host filesystem beyond what was set up at launch.
+
+    ```bash
+    dosbox --securemode --conf game.conf
+    ```
+  </Accordion>
+
+  <Accordion title="--socket <num>">
+    Run nullmodem on the specified socket number, used for serial port networking.
+
+    ```bash
+    dosbox --socket 5000
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Help flags
+
+| Flag | Description |
+|------|-------------|
+| `-h`, `-?`, `--help` | Print a summary of all command-line options and exit. |
+| `-V`, `--version`    | Print the DOSBox Staging version string and exit. |
+
+```bash
+dosbox --help
+dosbox --version
+```
+
+## Common usage patterns
+
+```bash
+# Run a game using its own local config
+dosbox --working-dir "/DOS Games/Ultima Underworld"
+
+# Override CPU speed and MIDI device for a single session
+dosbox --conf game.conf --set cpu_cycles=25000 --set mididevice=fluidsynth
+
+# Fully isolated test run with no config files
+dosbox --noprimaryconf --nolocalconf --set machine=ega
+
+# Install a game and exit when the installer finishes
+dosbox --exit -c "D:" -c "INSTALL.EXE"
+
+# Find what shaders are available, then launch with one
+dosbox --list-shaders
+dosbox --set shader=crt/aperture
+```

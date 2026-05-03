@@ -1,0 +1,272 @@
+---
+title: "DOSBox Staging DOS commands and utilities reference"
+description: "Reference for every DOS command available in DOSBox Staging — drive mounting, audio mixing, config management, file operations, and bundled utilities."
+---
+
+DOSBox Staging provides a full set of commands at the DOS prompt. Most are clean-room reimplementations of classic MS-DOS commands, compatible with their originals but not derived from MS-DOS source code. Several additional commands are specific to DOSBox Staging and give you control over the emulator itself — mounting drives, adjusting audio, managing configuration, and more.
+
+<Tip>
+  Type `HELP` at the DOS prompt for the most commonly used commands, or `HELP /ALL` for the complete list. Every command accepts `/?` for detailed usage — for example, `MOUNT /?` or `MIXER /?`.
+</Tip>
+
+## DOSBox Staging commands
+
+These commands are unique to DOSBox Staging and have no MS-DOS equivalent.
+
+<AccordionGroup>
+  <Accordion title="MOUNT — mount a directory or image file as a drive">
+    **Syntax:** `MOUNT <drive> <path> [options]`
+
+    Mounts a host directory or image file as a DOS drive letter. This is the primary way to give DOS programs access to files on your host machine.
+
+    <Note>
+      `IMGMOUNT` is accepted as an alias for `MOUNT` for backwards compatibility.
+    </Note>
+
+    **Key options:**
+
+    | Option | Description |
+    |--------|-------------|
+    | `-t cdrom` | Mount as a CD-ROM drive |
+    | `-t floppy` | Mount as a floppy drive |
+    | `-size` | Set the drive's reported size |
+
+    **Examples:**
+
+    ```
+    MOUNT C C:\Games\Doom
+    MOUNT D game.iso -t cdrom
+    MOUNT /?
+    ```
+  </Accordion>
+
+  <Accordion title="CONFIG — manage configuration and emulator state">
+    **Syntax:** `CONFIG [options]`
+
+    Reads and writes configuration settings at runtime, restarts the emulator, and performs other emulator management tasks.
+
+    **Key options:**
+
+    | Option | Description |
+    |--------|-------------|
+    | `-set <section> <key> = <value>` | Change a config setting at runtime |
+    | `-get <section> <key>` | Print the current value of a setting |
+    | `-wc [file]` | Write current settings to a config file |
+    | `-r` | Restart DOSBox Staging |
+    | `-h <setting>` | Show help for a setting |
+
+    **Examples:**
+
+    ```
+    CONFIG -set render shader = sharp
+    CONFIG -set cpu cpu_cycles = 25000
+    CONFIG -wc mygame.conf
+    CONFIG -r
+    ```
+
+    You can also use the shortcut form directly at the DOS prompt — `shader sharp` is equivalent to `CONFIG -set render shader = sharp`.
+  </Accordion>
+
+  <Accordion title="MIXER — display or change audio mixer settings">
+    **Syntax:** `MIXER [channel] [volume] [options]`
+
+    Displays the current audio mixer state or adjusts the volume of individual channels. Changes take effect immediately.
+
+    **Examples:**
+
+    ```
+    MIXER
+    MIXER MASTER 80
+    MIXER OPL 50
+    MIXER /?
+    ```
+  </Accordion>
+
+  <Accordion title="AUTOTYPE — scripted keyboard entry into a running game">
+    **Syntax:** `AUTOTYPE [options] <text>`
+
+    Simulates keyboard input into a running DOS program. Useful for automating menu navigation during game launches or installations.
+
+    **Examples:**
+
+    ```
+    AUTOTYPE -w 1 -p 50 "yes"
+    AUTOTYPE /?
+    ```
+  </Accordion>
+
+  <Accordion title="BOOT — boot from a DOS drive or disk image">
+    **Syntax:** `BOOT [image] [options]`
+
+    Boots DOSBox Staging from a floppy or hard disk image, or from a mounted drive. Used for games that require booting from a real DOS disk rather than running under DOSBox's built-in DOS shell.
+
+    **Examples:**
+
+    ```
+    BOOT disk1.img
+    BOOT -l C
+    BOOT /?
+    ```
+  </Accordion>
+
+  <Accordion title="CLIP — copy text to or from the clipboard">
+    **Syntax:** `CLIP [options]`
+
+    Copies text to the host clipboard or retrieves text from it. Useful for transferring data between the DOS environment and the host operating system.
+
+    **Examples:**
+
+    ```
+    DIR | CLIP
+    CLIP /?
+    ```
+  </Accordion>
+
+  <Accordion title="LOADROM — load a video BIOS or IBM BASIC ROM image">
+    **Syntax:** `LOADROM <file>`
+
+    Loads a ROM image of the video BIOS or IBM BASIC into the emulated machine's memory.
+
+    **Examples:**
+
+    ```
+    LOADROM BASIC.ROM
+    LOADROM /?
+    ```
+  </Accordion>
+
+  <Accordion title="MAKEIMG — create a new empty disk image">
+    **Syntax:** `MAKEIMG <file> [options]`
+
+    Creates a new blank disk image file. Use this to create virtual floppy or hard disk images before mounting them with `MOUNT`.
+
+    **Examples:**
+
+    ```
+    MAKEIMG floppy.img -t 1440
+    MAKEIMG /?
+    ```
+  </Accordion>
+
+  <Accordion title="MOUSECTL — manage physical and logical mice">
+    **Syntax:** `MOUSECTL [options]`
+
+    Configures physical and logical mouse mappings for the emulated machine.
+
+    **Examples:**
+
+    ```
+    MOUSECTL /?
+    ```
+  </Accordion>
+
+  <Accordion title="RESCAN — scan for changes on mounted DOS drives">
+    **Syntax:** `RESCAN [drive]`
+
+    Rescans a mounted drive for new or deleted files. Useful when files are added to a mounted host directory from outside DOSBox while it is running.
+
+    **Examples:**
+
+    ```
+    RESCAN
+    RESCAN C
+    ```
+  </Accordion>
+
+  <Accordion title="SERIAL — manage serial ports">
+    **Syntax:** `SERIAL [options]`
+
+    Displays and configures the emulated serial ports.
+
+    **Examples:**
+
+    ```
+    SERIAL /?
+    ```
+  </Accordion>
+
+  <Accordion title="SHOWPIC — display an image file">
+    **Syntax:** `SHOWPIC <file>`
+
+    Displays a supported image file in the DOSBox Staging window.
+
+    **Examples:**
+
+    ```
+    SHOWPIC TITLE.PCX
+    SHOWPIC /?
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## File and directory commands
+
+Standard file management commands, compatible with their MS-DOS equivalents.
+
+| Command | Aliases | Description |
+|---------|---------|-------------|
+| `ATTRIB` | | Display or change file attributes |
+| `CD` | `CHDIR` | Display or change the current directory |
+| `COPY` | | Copy one or more files |
+| `DEL` | `DELETE`, `ERASE` | Remove one or more files |
+| `DIR` | | List files and subdirectories |
+| `LS` | | Display directory contents in wide list format |
+| `MD` | `MKDIR` | Create a directory |
+| `MORE` | | Display output or a text file one screen at a time |
+| `MOVE` | | Move or rename files and directories |
+| `RD` | `RMDIR` | Remove a directory |
+| `REN` | `RENAME` | Rename one or more files |
+| `SUBST` | | Assign an internal directory to a drive letter |
+| `TREE` | | Display a directory tree |
+
+## Batch file commands
+
+Commands for use inside `.BAT` batch files.
+
+| Command | Description |
+|---------|-------------|
+| `CALL` | Start a batch program from within another batch program |
+| `CHOICE` | Wait for a keypress and set an `ERRORLEVEL` value |
+| `ECHO` | Display messages or toggle command echoing |
+| `FOR` | Run a command for each string in a set |
+| `GOTO` | Jump to a labeled line in a batch program |
+| `IF` | Conditional processing in batch programs |
+| `PAUSE` | Wait for a keystroke before continuing |
+| `REM` | Add a comment in a batch program |
+| `SHIFT` | Left-shift command-line parameters |
+
+## Miscellaneous commands
+
+| Command | Aliases | Description |
+|---------|---------|-------------|
+| `CLS` | | Clear the DOS screen |
+| `DATE` | | Display or change the internal date |
+| `EXIT` | | Exit from the DOS shell |
+| `HELP` | | Display help information for commands |
+| `KEYB` | | Configure a keyboard layout and screen font |
+| `LH` | `LOADHIGH` | Load a program into upper memory |
+| `LOADFIX` | | Load a program into a specific memory region and run it |
+| `MEM` | | Display used and free memory |
+| `MODE` | | Set the display mode or keyboard typematic rate |
+| `MOUSE` | | Load the built-in mouse driver |
+| `PATH` | | Display or set the executable search path |
+| `SET` | | Display or change environment variables |
+| `SETVER` | | Display or set the DOS version reported to applications |
+| `TIME` | | Display or change the internal time |
+| `TYPE` | | Display the contents of a text file |
+| `VER` | | Display the DOS version |
+| `VOL` | | Display the disk volume and serial number |
+
+## Bundled third-party programs
+
+DOSBox Staging ships a small set of [FreeDOS](https://www.freedos.org/) utilities as pre-compiled binaries on the `Y:` drive. When the `Y:` drive is automounted (enabled by default), the `Y:\DOS` directory is added to `PATH` automatically, making these commands available from any drive.
+
+<Note>
+  These are not DOSBox Staging reimplementations — they are third-party open-source programs included for convenience.
+</Note>
+
+| Command | Description | Source |
+|---------|-------------|--------|
+| `DEBUG` | Interactive DOS debugger | [DOS-debug](https://github.com/Baron-von-Riedesel/DOS-debug) |
+| `DELTREE` | Delete a directory tree including all files and subdirectories | [FreeDOS](https://gitlab.com/FreeDOS/base/deltree) |
+| `XCOPY` | Extended file copy with subdirectory support | [FreeDOS](https://github.com/joncampbell123/dosbox-x/tree/master/src/builtin/xcopy) |

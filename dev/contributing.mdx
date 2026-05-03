@@ -1,0 +1,154 @@
+---
+title: "Contributing Code and Issues to DOSBox Staging"
+description: "Learn how to report bugs, request features, find issues to work on, submit pull requests, and write correct commit messages for DOSBox Staging."
+---
+
+DOSBox Staging is an open-source project that welcomes contributions of all kinds — whether you're fixing a typo in the documentation, squashing a tricky bug, or adding a brand-new feature. This guide explains the workflows and conventions you need to follow to get your contribution merged smoothly.
+
+## Bug reports and feature requests
+
+Report bugs through the [GitHub issue tracker](https://github.com/dosbox-staging/dosbox-staging/issues). Issues and requests reported via social media comments or private messages are very likely to be lost — the tracker is the only reliable channel.
+
+If you find an open [feature request](https://github.com/dosbox-staging/dosbox-staging/issues?q=is%3Aissue+is%3Aopen+label%3Aenhancement) that you're interested in, leave a comment. This helps the team decide where to focus development effort.
+
+## Finding something to work on
+
+There are always tasks available at every skill level:
+
+- **Test DOSBox Staging** with your DOS games and report any regressions.
+- **Improve the documentation** — in the repository or in the [project wiki](https://github.com/dosbox-staging/dosbox-staging/wiki).
+- **Fix warnings** — build with `-Wall -Weffc++` to see potential code improvements.
+- **Fix open bugs** — browse [open bug reports](https://github.com/dosbox-staging/dosbox-staging/issues?q=is%3Aissue+is%3Aopen+label%3Abug). If an issue isn't assigned to anyone, it's available. Leave a comment saying you're working on it.
+- **Review static analysis** — check the [PVS-Studio reports](https://github.com/dosbox-staging/dosbox-staging/actions/workflows/pvs-studio.yml) for true-positive issues worth fixing.
+- **Good first issues** — the [`good first issue`](https://github.com/dosbox-staging/dosbox-staging/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) label marks issues suitable for newcomers.
+- **Provide translations** — refer to the [translations guide](https://github.com/dosbox-staging/dosbox-staging/blob/main/docs/TRANSLATING.md).
+
+If you plan to work on a larger feature, open an issue to discuss it with the team before starting.
+
+## Submitting code changes
+
+All code changes go through GitHub pull requests. Keep the following rules in mind:
+
+<Steps>
+  <Step title="Keep commits small and focused">
+    Prefer small commits with a clearly defined scope. The smaller and more focused each commit, the easier it is to bisect when tracking down regressions. Style-only changes that touch more than 10–20 lines should always be a separate `style:` commit that precedes any functional changes.
+  </Step>
+  <Step title="Ensure every commit compiles">
+    Every individual commit in your PR must compile on its own. This is strictly enforced because broken intermediate commits break `git bisect`. Run the helper script before opening your PR:
+
+    ```bash
+    scripts/tools/compile-commits.sh
+    ```
+  </Step>
+  <Step title="Open the pull request">
+    Push your branch to GitHub and open a pull request against `main`. Describe what the change does and why. Reference any related issues. The CI will run builds and tests automatically — check the results before requesting a review.
+  </Step>
+</Steps>
+
+## Commit message conventions
+
+Read [How to Write a Git Commit Message](https://chris.beams.io/posts/git-commit/) before submitting your first PR — and follow all seven rules:
+
+<AccordionGroup>
+  <Accordion title="The seven rules of a great git commit message">
+    1. Separate the subject from the body with a blank line.
+    2. Limit the subject line to 50 characters.
+    3. Capitalise the subject line.
+    4. Do not end the subject line with a period.
+    5. Use the imperative mood in the subject line.
+    6. Wrap the body at 72 characters.
+    7. Use the body to explain *what* and *why*, not *how*.
+  </Accordion>
+</AccordionGroup>
+
+The only exception is commits imported from the upstream `svn/trunk` branch, which may not follow these conventions.
+
+### Commit prefixes
+
+DOSBox Staging uses a small set of prefixes to distinguish non-functional commits from functional code changes:
+
+| Prefix | When to use |
+|--------|-------------|
+| `build:` | Changes to build scripts or the CMake/Meson configuration. |
+| `ci:` | Changes to GitHub Actions workflows. |
+| `docs:` | Changes to documentation, including config setting descriptions. |
+| `style:` | Reformats or whitespace changes with zero functional impact. |
+| `website:` | Changes to the MkDocs sources the website is generated from. |
+
+<Note>
+  The `fix:`, `feat:`, `refactor:`, and `test:` prefixes are **discouraged**. They add noise without clarity, and it is often unclear whether a change belongs in one category or another.
+</Note>
+
+### Commit message examples
+
+```
+Add MT-32 reverb room size setting
+
+Expose the MT-32 reverb room size parameter as a config option in the
+[mt32] section so users can tune it without restarting DOSBox.
+
+Closes #1234
+```
+
+```
+style: Reformat midi_fluidsynth.cpp
+
+No functional changes.
+```
+
+```
+docs: Document webserver_bind_address config option
+```
+
+```
+build: Enable LTO for release builds on GCC and Clang
+```
+
+### Commits authored by someone else
+
+When importing a patch that was originally written by someone else:
+
+1. Preserve the original author's code formatting in the import commit. Style fixes go in a subsequent commit.
+2. Set the correct author and date:
+
+```bash
+git commit --amend --author="Original Author <mail-or-identifier>"
+git commit --amend --date="15-05-2003 11:45"
+git commit --amend --signoff
+```
+
+3. Record where the patch came from using the `Imported-from:` trailer:
+
+```
+Imported-from: https://vogons.org/viewtopic.php?p=123456
+```
+
+## Tools
+
+### compile-commits
+
+Verifies that every commit in your branch compiles independently. Run it from the repository root before opening a PR:
+
+```bash
+scripts/tools/compile-commits.sh
+```
+
+### format-commit
+
+Formats all C/C++ code touched by your most recent commit using `clang-format`:
+
+```bash
+git commit -m "Edit some C++ code"
+./scripts/tools/format-commit.sh
+```
+
+Run `./scripts/tools/format-commit.sh --help` to see available options.
+
+### count-warnings
+
+Counts compiler warnings in a build log, which feeds into the CI quality gates:
+
+```bash
+make -j "$(nproc)" |& tee build.log
+./scripts/ci/count-warnings.py build.log
+```

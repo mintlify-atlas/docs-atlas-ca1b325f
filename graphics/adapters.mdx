@@ -1,0 +1,253 @@
+---
+title: 'Graphics adapters for DOS emulation in DOSBox Staging'
+description: 'Choose between Hercules, CGA, EGA, VGA, SVGA, Tandy, and PCjr adapters to match the era and hardware your DOS game was designed for.'
+---
+
+The `machine` setting in DOSBox Staging selects which video adapter is emulated, determining which graphics modes DOS programs can access and — in some cases — enabling additional hardware like sound chips. The default **`svga_s3`** (S3 Trio64) covers the widest range of software, from standard VGA through high-resolution SVGA, so you only need to change it for titles that specifically require an older standard: typically early-to-mid 1980s games written for CGA, Tandy, or Hercules hardware, or demoscene productions targeting specific SVGA chipsets.
+
+## Adapter reference
+
+<AccordionGroup>
+
+<Accordion title="Hercules Graphics Card — machine = hercules">
+
+Released in 1982 by Hercules Computer Technology, the **Hercules Graphics Card** (HGC) was the first widely available card to combine MDA-compatible text with bitmapped graphics on IBM PC compatibles. Its 720×348 monochrome graphics mode offered the highest resolution available on standard PC monitors until VGA arrived five years later.
+
+Hercules was popular for business software and CAD programs. Game support was more limited — most action games required colour — but titles with explicit Hercules support include Lotus 1-2-3, various text adventures, and a number of Sierra and other titles that shipped with Hercules drivers.
+
+DOSBox Staging emulates the Hercules with selectable monochrome phosphor palettes (amber, green, white, paperwhite) that can be cycled with `F11` or set via the `monochrome_palette` setting.
+
+```ini dosbox.conf
+[dosbox]
+machine = hercules
+
+[render]
+monochrome_palette = amber
+```
+
+<Note>
+Some software (CheckIt, QBasic, MS-DOS Editor) may detect Hercules as MDA and refuse to enter graphics mode. Look for a companion TSR like `QBHERC.COM` or `MSHERC.COM` to work around this.
+</Note>
+
+| Property | Value |
+|---|---|
+| Year | 1982 |
+| Max colours | 2 (monochrome) |
+| Max resolution | 720×348 |
+| Sound | None |
+
+</Accordion>
+
+<Accordion title="CGA — machine = cga">
+
+Introduced in 1981, IBM's **Color Graphics Adapter** (CGA) was the first colour graphics option for the PC. It offered 320×200 at 4 colours from fixed palettes, 640×200 at 2 colours, and both 40- and 80-column colour text modes.
+
+CGA's most distinctive feature is its **composite video output**. On NTSC composite monitors or TVs, interference patterns in the signal produce "artifact colours" — up to 16 colours from what is nominally a 4-colour mode. Sierra On-Line and other developers deliberately exploited this to produce far more colourful graphics than the digital RGBI output could display.
+
+CGA was the baseline graphics standard that virtually all DOS games from 1981 to 1987 supported, and it remained a common fallback option well into the early 1990s.
+
+```ini dosbox.conf
+[dosbox]
+machine = cga
+```
+
+To enable composite artifact colours:
+
+```ini dosbox.conf
+[dosbox]
+machine = cga
+
+[composite]
+composite = on
+hue = 0
+```
+
+| Property | Value |
+|---|---|
+| Year | 1981 |
+| Max colours | 4 (up to 16 in composite mode) |
+| Max resolution | 640×200 |
+| Sound | None |
+
+</Accordion>
+
+<Accordion title="Monochrome CGA — machine = cga_mono">
+
+Emulates a CGA adapter connected to a monochrome monitor. This produces CGA video modes rendered in monochrome, with selectable phosphor palettes just like Hercules mode. A few programs were designed for this specific configuration.
+
+```ini dosbox.conf
+[dosbox]
+machine = cga_mono
+
+[render]
+monochrome_palette = green
+```
+
+</Accordion>
+
+<Accordion title="IBM PCjr — machine = pcjr">
+
+Released in 1983, the **IBM PCjr** was IBM's attempt at a home computer. It extended CGA with additional video modes — most notably 16-colour 320×200, a significant step up from CGA's 4-colour limit — and added a Texas Instruments SN76496 3-voice sound chip, the first built-in sound hardware beyond the PC speaker on any IBM PC platform.
+
+The PCjr was discontinued after just one year. Tandy Corporation saw the opportunity, cloned the PCjr's enhanced graphics and sound into the Tandy 1000, fixed most of its shortcomings, and sold it through their Radio Shack stores. Setting `machine = pcjr` enables PCjr graphics, PCjr sound, and composite video emulation.
+
+```ini dosbox.conf
+[dosbox]
+machine = pcjr
+```
+
+| Property | Value |
+|---|---|
+| Year | 1983 |
+| Max colours | 16 |
+| Max resolution | 640×200 |
+| Sound | TI SN76496 3-voice chip |
+
+</Accordion>
+
+<Accordion title="Tandy 1000 — machine = tandy">
+
+The **Tandy 1000** (1984) successfully cloned the PCjr's enhanced graphics and sound into a longer-lived, more popular product line. All CGA and PCjr video modes are supported, including 16-colour 320×200. Later Tandy models with "Video II" hardware added 16-colour 640×200. The built-in TI SN76496 3-voice chip gave Tandy machines a significant audio advantage over standard PCs.
+
+The Tandy 1000 was the best consumer-grade DOS gaming platform of the mid-1980s. Many Sierra titles (King's Quest, Space Quest, Leisure Suit Larry), Defender of the Crown, and Sid Meier's Pirates! look and sound noticeably better in Tandy mode compared to standard CGA. Setting `machine = tandy` also enables Tandy sound and composite video emulation.
+
+```ini dosbox.conf
+[dosbox]
+machine = tandy
+```
+
+| Property | Value |
+|---|---|
+| Year | 1984 |
+| Max colours | 16 |
+| Max resolution | 640×200 |
+| Sound | TI SN76496 3-voice chip |
+
+</Accordion>
+
+<Accordion title="EGA — machine = ega">
+
+IBM's **Enhanced Graphics Adapter** (EGA), released in 1984, was a major step forward: 16 simultaneous colours from a 64-colour palette at up to 640×350 resolution. DOSBox emulates EGA with a fixed 256 KB of video memory.
+
+EGA was the dominant PC graphics standard from roughly 1985 to 1990. Celebrated games of the period — including Loom, The Secret of Monkey Island, and the early Sierra adventures — ran in 16-colour 320×200 (a resolution shared with Tandy). EGA's higher 640×350 resolution was used mainly by strategy titles, simulations, and illustrated text adventures that benefited from the extra detail.
+
+```ini dosbox.conf
+[dosbox]
+machine = ega
+```
+
+<Note>
+EGA is not backward-compatible with Hercules/MDA text modes. Games expecting CGA monitor behaviour on an EGA card may also show differences, as DOSBox emulates the EGA with an EGA-class monitor.
+</Note>
+
+| Property | Value |
+|---|---|
+| Year | 1984 |
+| Max colours | 16 |
+| Max resolution | 640×350 |
+| Video memory | 256 KB (fixed) |
+| Sound | None |
+
+</Accordion>
+
+<Accordion title="VGA and SVGA">
+
+IBM's **Video Graphics Array** (VGA, 1987) was the last IBM graphics standard that PC clone manufacturers widely adopted. VGA introduced the iconic **Mode 13h** — 256 colours from a palette of 262,144 at 320×200 — which became the standard DOS gaming mode from the late 1980s through the mid-1990s. There is no dedicated VGA-only machine type in DOSBox Staging; all SVGA adapters are fully backward-compatible with VGA.
+
+**SVGA (Super VGA)** refers to any VGA superset offering higher resolutions and colour depths. DOSBox Staging emulates four SVGA chipsets:
+
+<Tabs>
+  <Tab title="S3 Trio64 (default)">
+
+`machine = svga_s3` is the default and most capable adapter. Released in 1994, the S3 Trio64 was ubiquitous by the mid-1990s. It provides full VESA VBE 2.0 support with a linear framebuffer, defaults to 4 MB of video memory (configurable from 512 KB to 8 MB via `vmemsize`), and handles everything from standard VGA up to 1600×1200.
+
+This is the right choice for the vast majority of DOS games.
+
+```ini dosbox.conf
+[dosbox]
+machine = svga_s3
+```
+
+Two compatibility variants are also available:
+
+- `machine = vesa_oldvbe` — S3 Trio64 limited to VESA VBE 1.2. Use for games that malfunction with VBE 2.0.
+- `machine = vesa_nolfb` — S3 Trio64 with VBE 2.0 but without the linear framebuffer. Needed by a small number of titles.
+
+<Tip>
+Some games and GOG releases ship with **UniVBE** (Universal VESA BIOS Extensions). DOSBox Staging's built-in VESA implementation is fully compliant, making UniVBE unnecessary — and it can cause graphical glitches. If a game has trouble with SVGA modes, check for a bundled `UNIVBE.EXE` or `UVCONFIG.EXE` and try preventing it from loading.
+</Tip>
+
+  </Tab>
+  <Tab title="Paradise PVGA1A">
+
+`machine = svga_paradise` — The **Paradise PVGA1A** (1988) is the closest thing DOSBox Staging offers to a plain IBM VGA adapter. It has no VESA VBE support and defaults to 512 KB of video memory (configurable to 256 KB or 1 MB via `vmemsize`).
+
+Use this for games or demos that expect strict VGA behaviour with no SVGA extensions, or for the handful of games that rely on per-scanline VGA register tricks, as it most faithfully replicates the original IBM VGA implementation.
+
+```ini dosbox.conf
+[dosbox]
+machine = svga_paradise
+```
+
+  </Tab>
+  <Tab title="Tseng Labs ET4000">
+
+`machine = svga_et4000` — The **Tseng Labs ET4000** (1989) was one of the most popular SVGA chipsets of the early 1990s. It offers a wide range of extended modes and defaults to 1 MB of video memory (configurable to 256 KB or 512 KB via `vmemsize`). No VESA VBE is supported.
+
+The ET4000's popularity made it a common target for demoscene productions. If a game explicitly lists ET4000 support, this is your machine type.
+
+```ini dosbox.conf
+[dosbox]
+machine = svga_et4000
+```
+
+  </Tab>
+  <Tab title="Tseng Labs ET3000">
+
+`machine = svga_et3000` — The **Tseng Labs ET3000** (1987) was one of the earliest SVGA chipsets. Its extended modes are limited — 800×600 at 16 colours and 640×480 at 256 colours — and it has no VESA VBE support and a fixed 512 KB of video memory. This is a niche option, useful mainly for demoscene productions written specifically for this chipset.
+
+```ini dosbox.conf
+[dosbox]
+machine = svga_et3000
+```
+
+  </Tab>
+</Tabs>
+
+<Note>
+A small number of games and demos rely on per-scanline VGA timing tricks that change graphics settings mid-frame (e.g., Lemmings, Pinball Fantasies, Alien Carnage). These may need `machine = svga_paradise`, which is the closest to IBM's original VGA implementation.
+</Note>
+
+</Accordion>
+
+</AccordionGroup>
+
+## Summary table
+
+| `machine` value | Adapter | Year | Max colours | Max resolution |
+|---|---|---|---|---|
+| `hercules` | Hercules HGC | 1982 | 2 (monochrome) | 720×348 |
+| `cga_mono` | CGA (monochrome monitor) | 1981 | 16 (monochrome) | 640×200 |
+| `cga` | CGA | 1981 | 4 (16 in composite) | 640×200 |
+| `pcjr` | IBM PCjr | 1983 | 16 | 640×200 |
+| `tandy` | Tandy 1000 | 1984 | 16 | 640×200 |
+| `ega` | EGA | 1984 | 16 | 640×350 |
+| `svga_paradise` | Paradise PVGA1A | 1988 | 256 | 1024×768 |
+| `svga_et3000` | Tseng Labs ET3000 | 1987 | 256 | 1024×768 |
+| `svga_et4000` | Tseng Labs ET4000 | 1989 | 65K | 1280×1024 |
+| `svga_s3` | S3 Trio64, VBE 2.0 (default) | 1994 | 16.7M | 1600×1200 |
+| `vesa_oldvbe` | S3 Trio64, VBE 1.2 | 1994 | 16.7M | 1600×1200 |
+| `vesa_nolfb` | S3 Trio64, VBE 2.0 (no LFB) | 1994 | 16.7M | 1600×1200 |
+
+## Composite video
+
+The CGA, PCjr, and Tandy adapters all support composite video emulation. On real hardware, connecting these cards to an NTSC composite monitor or TV produced "artifact colours" — interference patterns in the analogue signal that create far more colours than the digital output. Game developers at Sierra On-Line and elsewhere deliberately exploited this effect.
+
+DOSBox Staging faithfully emulates composite output for all three adapters, including adjustable hue, saturation, contrast, and brightness. This is essential for playing early Sierra AGI games (King's Quest, Space Quest) as the artists intended.
+
+## 3D and video accelerators
+
+DOSBox Staging also emulates two add-on cards that work alongside the primary video adapter and are independent of the `machine` setting:
+
+- **3dfx Voodoo** — The iconic 3D accelerator released in 1996. Enabled by default; most DOS Glide games require a `GLIDE2X.OVL` driver file.
+- **ReelMagic** — Sigma Designs MPEG-1 hardware decoder from 1993 for full-motion video in a handful of DOS titles.

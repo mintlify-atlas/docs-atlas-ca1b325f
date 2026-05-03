@@ -1,0 +1,470 @@
+---
+title: "DOSBox Staging HTTP REST API Endpoint Reference"
+description: "Enable the built-in web server, then use CPU register, memory read/write/allocate, DOS data structure, and system info endpoints to inspect the emulator."
+---
+
+DOSBox Staging can expose an HTTP REST API that gives external tools direct access to the internal state of the emulated machine. Use cases include displaying game information in external overlays, game modding, memory inspection, bug investigation, function hooking, and building cheat tools. All endpoints access the emulated machine's state atomically between CPU steps — they are never called during natively implemented DOS functions or interrupts, so internal data structures are always consistent.
+
+<Warning>
+  The HTTP API is intended for developers and advanced users. Do not enable it unless you know what you are doing. The API binds to `localhost` only by default, but it gives full control over the emulator. **Never expose it to untrusted networks.**
+</Warning>
+
+<Note>
+  The HTTP API has been primarily tested with `core = normal`. Behaviour with other CPU cores may vary.
+</Note>
+
+## Enabling the API
+
+Add the following to your DOSBox Staging configuration file and restart the emulator:
+
+```ini
+[webserver]
+webserver_enabled = on
+```
+
+Once running, open `http://localhost:8080/` in a browser to view the built-in interactive API documentation.
+
+## Configuration settings
+
+<AccordionGroup>
+  <Accordion title="webserver_enabled">
+    Enable or disable the HTTP REST API.
+
+    **Possible values:** `on`, `off` (default: `off`)
+
+    ```ini
+    [webserver]
+    webserver_enabled = on
+    ```
+  </Accordion>
+
+  <Accordion title="webserver_port">
+    TCP port to bind to.
+
+    **Default:** `8080`
+
+    ```ini
+    [webserver]
+    webserver_port = 8080
+    ```
+  </Accordion>
+
+  <Accordion title="webserver_bind_address">
+    IP address to bind to.
+
+    **Default:** `127.0.0.1`
+
+    Only local connections are allowed by default. This API gives full control over DOSBox — do not ever change this to a non-loopback address on an untrusted network.
+
+    ```ini
+    [webserver]
+    webserver_bind_address = 127.0.0.1
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## GET /api/cpu
+
+Returns the current state of all x86 CPU registers. The snapshot is taken atomically between CPU steps.
+
+**Method:** `GET`  
+**Path:** `/api/cpu`
+
+### Response fields
+
+<ResponseField name="eax" type="number" required>
+  Accumulator register (32-bit).
+</ResponseField>
+
+<ResponseField name="ebx" type="number" required>
+  Base register (32-bit).
+</ResponseField>
+
+<ResponseField name="ecx" type="number" required>
+  Counter register (32-bit).
+</ResponseField>
+
+<ResponseField name="edx" type="number" required>
+  Data register (32-bit).
+</ResponseField>
+
+<ResponseField name="esi" type="number" required>
+  Source index register (32-bit).
+</ResponseField>
+
+<ResponseField name="edi" type="number" required>
+  Destination index register (32-bit).
+</ResponseField>
+
+<ResponseField name="esp" type="number" required>
+  Stack pointer (32-bit).
+</ResponseField>
+
+<ResponseField name="ebp" type="number" required>
+  Base pointer (32-bit).
+</ResponseField>
+
+<ResponseField name="eip" type="number" required>
+  Instruction pointer (32-bit).
+</ResponseField>
+
+<ResponseField name="flags" type="number" required>
+  CPU flags register (EFLAGS).
+</ResponseField>
+
+<ResponseField name="cs" type="number" required>
+  Code segment register.
+</ResponseField>
+
+<ResponseField name="ds" type="number" required>
+  Data segment register.
+</ResponseField>
+
+<ResponseField name="es" type="number" required>
+  Extra segment register.
+</ResponseField>
+
+<ResponseField name="ss" type="number" required>
+  Stack segment register.
+</ResponseField>
+
+<ResponseField name="fs" type="number" required>
+  FS segment register.
+</ResponseField>
+
+<ResponseField name="gs" type="number" required>
+  GS segment register.
+</ResponseField>
+
+### Example
+
+```bash
+curl http://localhost:8080/api/cpu
+```
+
+```json
+{
+  "eax": 0,
+  "ebx": 0,
+  "ecx": 0,
+  "edx": 0,
+  "esi": 0,
+  "edi": 0,
+  "esp": 65534,
+  "ebp": 0,
+  "eip": 256,
+  "flags": 518,
+  "cs": 3968,
+  "ds": 3968,
+  "es": 3968,
+  "ss": 3968,
+  "fs": 0,
+  "gs": 0
+}
+```
+
+---
+
+## GET /api/memory/:offset/:len
+
+Read memory at a flat linear address.
+
+**Method:** `GET`  
+**Path:** `/api/memory/:offset/:len`
+
+### Path parameters
+
+<ParamField path="offset" type="string" required>
+  Start address in the emulated address space. Accepts decimal or hex with the `0x` prefix (e.g., `0x100000`).
+</ParamField>
+
+<ParamField path="len" type="string" required>
+  Number of bytes to read. Maximum is 128 MiB per request. Accepts decimal or hex with the `0x` prefix.
+</ParamField>
+
+### Response
+
+By default, raw binary data is returned (`Content-Type: application/octet-stream`). Set `Accept: application/json` to receive a JSON response with the data Base64-encoded in a `data` field.
+
+### Example — read the entire conventional memory area
+
+```bash
+curl http://localhost:8080/api/memory/0/0x100000 --output conventional.bin
+```
+
+```bash
+# JSON response with Base64-encoded data
+curl -H "Accept: application/json" \
+     http://localhost:8080/api/memory/0/0x100000
+```
+
+---
+
+## GET /api/memory/:segment/:offset/:len
+
+Read memory at a segmented address.
+
+**Method:** `GET`  
+**Path:** `/api/memory/:segment/:offset/:len`
+
+### Path parameters
+
+<ParamField path="segment" type="string" required>
+  Segment base. Can be the name of a segment register (`CS`, `SS`, `DS`, `ES`, `FS`, `GS`) or a numeric value. Accepts decimal or hex with the `0x` prefix.
+</ParamField>
+
+<ParamField path="offset" type="string" required>
+  Offset within the segment. Accepts decimal or hex with the `0x` prefix.
+</ParamField>
+
+<ParamField path="len" type="string" required>
+  Number of bytes to read. Maximum is 128 MiB per request. Accepts decimal or hex with the `0x` prefix.
+</ParamField>
+
+### Response
+
+Same as the flat-address variant: raw binary by default, JSON with Base64 if `Accept: application/json` is set.
+
+### Example
+
+```bash
+# Read 256 bytes at DS:0x0100
+curl http://localhost:8080/api/memory/DS/0x0100/256
+```
+
+---
+
+## PUT /api/memory/:offset
+
+Write memory at a flat linear address.
+
+**Method:** `PUT`  
+**Path:** `/api/memory/:offset`
+
+### Path parameters
+
+<ParamField path="offset" type="string" required>
+  Start address to write to. Accepts decimal or hex with the `0x` prefix.
+</ParamField>
+
+### Request body
+
+Send raw binary with `Content-Type: application/octet-stream`, or a JSON object with a Base64-encoded `data` field and `Content-Type: application/json`:
+
+```json
+{
+  "data": "AAEC..."
+}
+```
+
+### Atomic compare-and-swap
+
+Set the `If-Match` header to Base64-encoded expected data to perform an atomic compare-and-swap write. Returns HTTP 412 (Precondition Failed) if the current memory contents do not match the expected value.
+
+### Example
+
+```bash
+# Write raw bytes
+curl -X PUT http://localhost:8080/api/memory/0x38309 \
+     -H "Content-Type: application/octet-stream" \
+     --data-binary @patch.bin
+```
+
+---
+
+## PUT /api/memory/:segment/:offset
+
+Write memory at a segmented address.
+
+**Method:** `PUT`  
+**Path:** `/api/memory/:segment/:offset`
+
+### Path parameters
+
+<ParamField path="segment" type="string" required>
+  Segment base. Accepts a segment register name (`CS`, `SS`, `DS`, `ES`, `FS`, `GS`) or a numeric value.
+</ParamField>
+
+<ParamField path="offset" type="string" required>
+  Offset within the segment.
+</ParamField>
+
+### Request body
+
+Same as the flat-address PUT variant — raw binary or JSON with Base64-encoded `data`. Supports `If-Match` for compare-and-swap.
+
+---
+
+## POST /api/memory/allocate
+
+Allocate memory from the emulated machine.
+
+**Method:** `POST`  
+**Path:** `/api/memory/allocate`
+
+### Request body
+
+```json
+{
+  "size": 1024,
+  "area": "conv",
+  "strategy": "best_fit"
+}
+```
+
+<ParamField body="size" type="number" required>
+  Number of bytes to allocate.
+</ParamField>
+
+<ParamField body="area" type="string" required>
+  Memory area to allocate from. Possible values:
+
+  - `conv` — conventional memory (below 640 KB)
+  - `UMA` — upper memory area (UMBs)
+  - `XMS` — extended memory (XMS)
+</ParamField>
+
+<ParamField body="strategy" type="string" default="best_fit">
+  Allocation strategy. Possible values:
+
+  - `best_fit` (default) — smallest block that fits
+  - `first_fit` — first block that fits
+  - `last_fit` — last block that fits
+
+  The XMS allocator only supports `best_fit`.
+</ParamField>
+
+### Response
+
+<ResponseField name="addr" type="number" required>
+  Linear address of the allocated block.
+</ResponseField>
+
+Returns HTTP 503 if allocation fails.
+
+### Example
+
+```bash
+curl -X POST http://localhost:8080/api/memory/allocate \
+     -H "Content-Type: application/json" \
+     -d '{"size": 1024, "area": "conv", "strategy": "best_fit"}'
+```
+
+```json
+{
+  "addr": 655360
+}
+```
+
+---
+
+## POST /api/memory/free
+
+Free a previously allocated memory block.
+
+**Method:** `POST`  
+**Path:** `/api/memory/free`
+
+### Request body
+
+```json
+{
+  "addr": 655360
+}
+```
+
+<ParamField body="addr" type="number" required>
+  Linear address of the block to free, as returned by `POST /api/memory/allocate`.
+</ParamField>
+
+Returns HTTP 400 on invalid addresses.
+
+### Example
+
+```bash
+curl -X POST http://localhost:8080/api/memory/free \
+     -H "Content-Type: application/json" \
+     -d '{"addr": 655360}'
+```
+
+---
+
+## GET /api/dos
+
+Returns pointers to internal DOS data structures.
+
+**Method:** `GET`  
+**Path:** `/api/dos`
+
+### Response fields
+
+<ResponseField name="listOfLists" type="number" required>
+  Pointer to the DOS list of lists (INT 21h AH=52h). Contains segment addresses of core DOS data structures.
+</ResponseField>
+
+<ResponseField name="dosSwappableArea" type="number" required>
+  Pointer to the DOS swappable area (INT 21h AX=5D06h).
+</ResponseField>
+
+<ResponseField name="firstShell" type="number" required>
+  Pointer to the first shell's PSP (Program Segment Prefix) — effectively the start of usable memory.
+</ResponseField>
+
+### Example
+
+```bash
+curl http://localhost:8080/api/dos
+```
+
+```json
+{
+  "listOfLists": 3232,
+  "dosSwappableArea": 3488,
+  "firstShell": 4096
+}
+```
+
+---
+
+## GET /api/info
+
+Returns DOSBox Staging version information and relevant filesystem paths.
+
+**Method:** `GET`  
+**Path:** `/api/info`
+
+### Example
+
+```bash
+curl http://localhost:8080/api/info
+```
+
+---
+
+## Example tools
+
+The `extras/api/` directory in the DOSBox Staging source tree contains ready-to-use HTML tools and a JavaScript API wrapper. To use them, copy the files to the `webserver` directory inside your DOSBox configuration folder.
+
+<AccordionGroup>
+  <Accordion title="Memory Monitor">
+    Monitor and manipulate memory locations live. Supports labelled watches with types (`uint8`, `cstring`, etc.). As an example, run Commander Keen Episode 4 with the default configuration and import the following config string to see lives and ammo — and edit them:
+
+    ```
+    W3siYWRkciI6IjB4YzhlZmUiLCJ0eXBlIjoiY3N0cmluZyIsImxhYmVsIjoiRmlsZSJ9LHsiYWRkciI6IjB4MzgyZjgiLCJ0eXBlIjoidWludDgiLCJsYWJlbCI6IkFtbW8ifSx7ImFkZHIiOiIweDAzODMwYSIsInR5cGUiOiJ1aW50OCIsImxhYmVsIjoiTGl2ZXMifV0==
+    ```
+  </Accordion>
+
+  <Accordion title="Memory Scanner">
+    A lightweight Cheat Engine equivalent. Search for a known value, perform an in-game action that changes it, then filter the results. Repeat until you isolate the memory address.
+  </Accordion>
+
+  <Accordion title="Memory Viewer">
+    A memory viewer with a built-in x86 disassembler.
+  </Accordion>
+
+  <Accordion title="JavaScript API wrapper (api.js)">
+    A JavaScript class for building custom tools on top of the API. Handles Base64 encoding/decoding, segment register resolution, and compare-and-swap operations. TypeScript type definitions are in `api.d.ts`.
+  </Accordion>
+</AccordionGroup>

@@ -1,0 +1,162 @@
+---
+title: 'Aspect ratios and non-square pixel correction in DOS'
+description: 'Understand why DOS games use non-square pixels, how 4:3 aspect ratio correction works, and when to use square pixels or custom viewport settings.'
+---
+
+If you have ever wondered why DOS games look slightly squished without aspect ratio correction, or why there are black bars around the image, the answer comes down to one historical fact: computer monitors were not widescreen until around 2010. DOS games were designed for 4:3 CRT displays, and most of them used non-square pixels to make their low-resolution graphics fill the screen completely. DOSBox Staging handles aspect ratio correction automatically by default, so games look as the artists intended — but understanding what is happening under the hood helps when you need to override the defaults.
+
+## Why DOS pixels are not square
+
+The most commonly used DOS graphics mode — 320×200 VGA — was designed to completely fill a 4:3 CRT screen. That is only possible if the pixels are slightly tall rectangles rather than squares. Here is the maths: a 4:3 ratio scaled to the same horizontal resolution gives 320:240, and 240 ÷ 200 = 1.2. So each pixel is exactly 20% taller than it is wide, giving a **pixel aspect ratio (PAR) of 1:1.2** (or 5:6).
+
+On a modern 16:9 display with square pixels, displaying the raw 320×200 image without correction results in a squished picture — human faces look slightly flat, circles become ovals, and games with everyday objects look noticeably wrong. The notorious example is Guybrush Threepwood in Monkey Island appearing unnaturally short when aspect ratio correction is disabled.
+
+<Info>
+The fact that monitors were not widescreen until around 2010 is easy to forget, and older DOSBox versions did not apply aspect ratio correction by default. As a result, screenshots and videos of DOS games without aspect ratio correction are very common online — but they are not how these games looked on real hardware.
+</Info>
+
+## Non-square pixels across DOS standards
+
+The 320×200 VGA mode is not the only one with non-square pixels. DOSBox Staging handles all of these automatically:
+
+| Resolution | Standard | Pixel aspect ratio (PAR) |
+|---|---|---|
+| 320×200 | VGA, CGA, Tandy, PCjr | 1:1.2 (5:6) |
+| 640×350 | EGA | 1:1.3714 |
+| 640×200 | EGA | 1:2.4 |
+| 720×348 | Hercules | 1:1.5517 |
+| 640×480 and above | VGA, SVGA | 1:1 (square) |
+
+## Aspect ratio correction settings
+
+Aspect ratio settings live in the `[render]` section via the `aspect` setting:
+
+<AccordionGroup>
+
+<Accordion title="auto — aspect ratio correction on (default)">
+
+The default `auto` (also `on`) applies aspect ratio correction for non-square pixel modes, so DOS games appear as they would on a 4:3 CRT. Square pixel modes such as 640×480 and above are displayed as-is.
+
+```ini dosbox.conf
+[render]
+aspect = auto
+```
+
+This is the right setting for the vast majority of DOS games.
+
+</Accordion>
+
+<Accordion title="square-pixels — disable correction">
+
+Setting `aspect = square-pixels` (also `off`) displays all DOS video modes with square pixels. Most 320×200 games will appear squished, but a minority of titles need this to look correct.
+
+```ini dosbox.conf
+[render]
+aspect = square-pixels
+```
+
+This is needed for DOS ports of PAL Amiga games, where the original art was designed for square pixels at 320×256. Studios known for this include Revolution Software (Beneath a Steel Sky, Lure of the Temptress), Delphine Software (Another World, Flashback), and Coktel Vision (Gobliiins series). The tell-tale sign is scanned or hand-drawn artwork that appears vertically stretched with aspect ratio correction enabled.
+
+</Accordion>
+
+<Accordion title="stretch — fill the screen">
+
+The `stretch` mode calculates the aspect ratio from the viewport dimensions, letting you force arbitrary aspect ratios. Use it with `viewport = fit` and `integer_scaling = off` to fill your entire 16:9 screen:
+
+```ini dosbox.conf
+[sdl]
+fullscreen = on
+
+[render]
+aspect = stretch
+viewport = fit
+integer_scaling = off
+```
+
+This is hard to justify for games with carefully drawn art, but is a reasonable option for text adventures or abstract games where the exact proportions do not matter.
+
+</Accordion>
+
+</AccordionGroup>
+
+## Black bars — why they appear
+
+When displaying 4:3 content on a 16:9 screen you get **pillarboxing** — black bars on the left and right sides. This is expected and correct behaviour. The alternative (stretching to fill the screen) would distort the image.
+
+The black bars above and below the image — **letterboxing** — come from **integer scaling**. CRT monitors had no fixed pixel grid; they projected the image continuously. Modern flat screens do have a fixed native resolution, so DOSBox Staging constrains the vertical scaling factor to integer values to prevent interference artifacts (wavy patterns) between the emulated scanlines and the display's pixel grid.
+
+On a 1080p monitor, 320×200 double-scanned to 640×400 can only be enlarged by a factor of 2 vertically (2×400 = 800, leaving 280 vertical pixels unused) before hitting the 5× boundary cleanly at 2000px, hence the letterboxing. On a 4K monitor (3840×2160), the same content can use 5× scaling, resulting in 2000px of content in 2160px, leaving only 160 unused pixels — much less letterboxing.
+
+## Integer scaling
+
+The `integer_scaling` setting controls this behaviour:
+
+```ini dosbox.conf
+[render]
+integer_scaling = auto
+```
+
+- **`auto`** (default) — Vertical integer scaling for adaptive CRT shaders only, with refinements allowing 3.5× and 4.5× factors.
+- **`vertical`** — Constrain vertical scaling to integers. Recommended for third-party shaders.
+- **`off`** — Disable integer scaling; the image fills the viewport entirely. Safe on 4K displays for resolutions up to 640×480.
+
+On a 4K monitor you can safely disable integer scaling for standard DOS resolutions without visible artifacts:
+
+```ini dosbox.conf
+[render]
+integer_scaling = off
+```
+
+## Sharp pixels without CRT emulation
+
+To get a crisp, pixel-perfect look without any CRT shader effects:
+
+```ini dosbox.conf
+[render]
+shader = sharp
+```
+
+To also enforce clean integer-aligned vertical scaling:
+
+```ini dosbox.conf
+[render]
+shader = sharp
+integer_scaling = vertical
+```
+
+This gives 100% sharp pixels vertically. Horizontally there may be a 1-pixel-wide interpolation band at the edges of some pixels depending on the video mode and upscale factor, but at 1440p and above this is imperceptible.
+
+## Custom viewport size
+
+Running a DOS game fullscreen on a modern 24" display is the equivalent of playing it on a 21" CRT — far larger than the 14" VGA monitors that were most popular in the mid-1990s. Low-resolution art was never meant to be seen that large. You can restrict the output to approximate a period-correct image size:
+
+```ini dosbox.conf
+[render]
+viewport = 1067x800
+```
+
+Or as a percentage of your desktop size:
+
+```ini dosbox.conf
+[render]
+viewport = 89%
+```
+
+The `89%` value produces optimal image sizes for DOS resolutions between 320×200 and 640×480 on most modern displays — with integer scaling enabled, 320×200 content will have roughly the physical size of a 15" CRT, and 640×480 that of a 19" monitor.
+
+<Info>
+Viewport sizes are specified in logical units, not physical pixels. On a 4K display with 200% DPI scaling, `viewport = 1280x960` translates to 2560×1920 physical pixels. On a 1080p display at 100% scaling it translates to 1280×960 pixels.
+</Info>
+
+## Custom aspect ratios for Hercules conversions
+
+Some Hercules games were lazy conversions that reused EGA/VGA assets without adjusting for the different pixel aspect ratio, resulting in a squashed appearance. You can emulate the horizontal and vertical stretch controls of a CRT to correct this using the `relative` viewport mode with `aspect = stretch`:
+
+```ini dosbox.conf
+[render]
+aspect = stretch
+viewport = relative 112% 173%
+integer_scaling = off
+```
+
+Use the **Stretch Axis**, **Inc Stretch**, and **Dec Stretch** hotkey actions (mapped via the key mapper) to adjust stretching in real time, then copy the logged viewport setting into your config.

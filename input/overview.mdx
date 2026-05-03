@@ -1,0 +1,388 @@
+---
+title: 'Input Devices: Keyboard, Mouse, Joystick & Key Mapper'
+description: 'Configure keyboard layouts, mouse capture and sensitivity, game port joystick emulation, and key remapping for DOS games in DOSBox Staging.'
+---
+
+DOSBox Staging emulates the full DOS input stack: **keyboard**, **mouse**, and **joystick**. For the vast majority of games everything works out of the box — no configuration required. When a game uses awkward key bindings, your controller doesn't map cleanly to the emulated game port, or you need to fine-tune mouse sensitivity, the settings below and the built-in key mapper have you covered.
+
+<Tabs>
+  <Tab title="Keyboard">
+
+## Keyboard
+
+DOSBox Staging captures your keyboard and passes input straight to the emulated DOS environment. Most keys just work. The one complication is that your host OS intercepts certain combinations — Alt+Tab, Cmd+H, Ctrl+Esc — before DOSBox ever sees them. The `keyboard_capture` setting lets DOSBox claim those keys first, which matters in fullscreen mode or when running software that relies on OS-level shortcuts.
+
+### Keyboard layout
+
+The `keyboard_layout` setting in the `[dos]` section selects the DOS keyboard layout used inside the emulated environment. This controls which characters appear when you type — useful when playing a game that ships with a non-English keyboard layout or when you want to match the layout of the original DOS machine.
+
+```ini
+[dos]
+keyboard_layout = de
+```
+
+Common country codes:
+
+| Code | Layout |
+|------|--------|
+| `us` | United States (default) |
+| `de` | German |
+| `fr` | French |
+| `es` | Spanish |
+| `it` | Italian |
+| `uk` | United Kingdom |
+| `pl` | Polish |
+
+<Tip>
+  You can also change the keyboard layout at runtime from the DOS prompt using the `KEYB` command — for example, `KEYB DE` for German.
+</Tip>
+
+### keyboard_capture
+
+Configured in the `[sdl]` section. When enabled, most OS-level keyboard shortcuts are intercepted and sent to DOSBox Staging instead. Examples of captured shortcuts:
+
+- Alt+Tab (task switching on all platforms)
+- Ctrl+Esc (Start menu on Windows)
+- Ctrl+F4 (virtual desktop switching on KDE)
+- Ctrl+Left (show desktop on macOS)
+
+```ini
+[sdl]
+keyboard_capture = on
+```
+
+Possible values: `on`, `off` (default: `off`)
+
+<Note>
+  This is particularly useful when running Windows 3.1 or DOS programs that use key combinations which conflict with your OS shortcuts.
+</Note>
+
+  </Tab>
+  <Tab title="Mouse">
+
+## Mouse
+
+DOSBox Staging includes a **built-in mouse driver** enabled by default — you do not need to load `MOUSE.COM` or `CTMOUSE` manually. The built-in driver provides lower latency and smoother movement than a real DOS driver and uses less memory.
+
+Click inside the DOSBox window to capture the mouse. To release it, press the middle mouse button or use Ctrl+F10 (Windows/Linux) / Cmd+F10 (macOS).
+
+### Capture behavior
+
+```ini
+[mouse]
+mouse_capture = onclick
+```
+
+| Value | Behavior |
+|-------|----------|
+| `onclick` | Capture on any mouse button click (default) |
+| `onstart` | Capture immediately on launch |
+| `seamless` | Mouse moves freely between DOSBox and desktop; captures only on middle-click or hotkey |
+| `nomouse` | Hide mouse and send no input to the game |
+
+<Note>
+  Use `seamless` mode for touchscreens. Seamless mode does not work correctly with all games, but Windows 3.1 can be made compatible with a custom mouse driver.
+</Note>
+
+### Sensitivity
+
+```ini
+[mouse]
+mouse_sensitivity = 100
+```
+
+- Set a single value to apply it to both axes (e.g., `150`).
+- Set separate X and Y values with a comma (e.g., `100,150`).
+- Negative values invert an axis; `0` disables it.
+
+The `mouse_raw_input` setting (default: `on`) bypasses the host OS's mouse acceleration, giving you consistent sensitivity regardless of your desktop settings. This is especially useful for fast-paced FPS games.
+
+### Mouse model
+
+By default DOSBox Staging emulates a two-button mouse (`2button`), which is the safest option — some games misbehave if an unexpected middle-button press is detected. Only change this if you know a game supports more buttons.
+
+```ini
+[mouse]
+builtin_dos_mouse_driver_model = 2button
+```
+
+| Value | Description |
+|-------|-------------|
+| `2button` | 2 buttons — safest, works with the vast majority of DOS games (default) |
+| `3button` | 3 buttons — only for games explicitly known to support it |
+| `wheel` | 3 buttons + scroll wheel — for rare DOS applications and Windows 3.1 with special drivers |
+
+### Middle-button release
+
+```ini
+[mouse]
+mouse_middle_release = on
+```
+
+Controls whether middle-clicking releases a captured mouse (and captures it in seamless mode). Default: `on`.
+
+### Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Mouse cursor doesn't move with slow movements">
+    Games like Ultima Underworld I and II cannot respond to small mouse movements, which were hard to achieve with the ball mice of that era. Set `builtin_dos_mouse_driver_move_threshold = 2` to ignore the smallest movements.
+
+    ```ini
+    [mouse]
+    builtin_dos_mouse_driver_move_threshold = 2
+    ```
+  </Accordion>
+  <Accordion title="Game misinterprets middle button presses">
+    Games such as Eye of the Beholder may misbehave when a middle button is detected. Set the mouse model to `2button` to prevent the middle button from being reported.
+
+    ```ini
+    [mouse]
+    builtin_dos_mouse_driver_model = 2button
+    ```
+  </Accordion>
+  <Accordion title="Using a real DOS mouse driver">
+    If you need to use a real DOS mouse driver (e.g., `MOUSE.COM` or `CTMOUSE.EXE`), set `builtin_dos_mouse_driver = off` and configure the PS/2 or serial mouse model separately, then load the driver from `AUTOEXEC`.
+
+    ```ini
+    [mouse]
+    builtin_dos_mouse_driver = off
+    ps2_mouse_model = intellimouse
+    ```
+  </Accordion>
+  <Accordion title="Dual-mouse gaming (two players, one PC)">
+    Multiple physical mice can be mapped to separate emulated mouse interfaces, enabling two-player split-screen gaming with two USB mice. Use the `MOUSECTL` command at the DOS prompt to configure per-interface mouse settings. See the [Dual Mouse Gaming wiki page](https://github.com/dosbox-staging/dosbox-staging/wiki/Dual-Mouse-Gaming) for full setup details.
+  </Accordion>
+</AccordionGroup>
+
+  </Tab>
+  <Tab title="Joystick">
+
+## Joystick
+
+The classic DOS game port was a 15-pin connector supporting up to 4 analog axes and 4 buttons — enough for two basic 2-button joysticks. DOSBox Staging automatically detects your modern USB controller and maps it to the emulated analog game port.
+
+### Joystick type
+
+```ini
+[joystick]
+joysticktype = auto
+```
+
+| Value | Description |
+|-------|-------------|
+| `auto` | Detect and use any connected joystick(s) (default) |
+| `2axis` | Two joysticks, each with 2 axes |
+| `4axis` | First joystick only, as a 4-axis type |
+| `4axis_2` | Second joystick only, as a 4-axis type |
+| `fcs` | Emulate a Thrustmaster FCS flight stick |
+| `ch` | Emulate a CH Flightstick Pro |
+| `hidden` | Hide from DOS but enable for key mapper use |
+| `disabled` | Fully disable joystick polling and mapping |
+
+<Note>
+  If you saved a mapper file while using one joystick type and then change `joysticktype`, reset the mapper file to avoid stale mappings.
+</Note>
+
+<Tip>
+  When using a controller exclusively for key mapping (keyboard-only games), set `joysticktype = hidden` so the game doesn't detect a joystick, then remap the buttons through the key mapper.
+</Tip>
+
+### Timed mode and deadzone
+
+```ini
+[joystick]
+timed   = on
+deadzone = 10
+```
+
+- `timed` (default: `on`) — Enables timed intervals for axis reporting. Disable if your joystick drifts.
+- `deadzone` — Percentage of motion to ignore (default: `10`, range: 0–100). Set to `100` to treat the stick as fully digital.
+
+### Calibration
+
+Most DOS games include in-game calibration. For games with poor calibration that still drift or offset, enable the calibration hotkeys:
+
+```ini
+[joystick]
+use_joy_calibration_hotkeys = on
+```
+
+With hotkeys enabled:
+- **Ctrl/Cmd + Arrow keys** — adjust axis scalar (Left/Right for X, Down/Up for Y)
+- **Alt + Arrow keys** — adjust axis offset position
+- **Ctrl+Delete / Ctrl+Home** — reset X and Y calibration
+
+Each key press logs the calibration values. Once you find values that work, disable the hotkeys and record the values in your per-game config:
+
+```ini
+[joystick]
+use_joy_calibration_hotkeys = off
+joy_x_calibration           = 0.576211,0.02
+joy_y_calibration           = 0.5474,-0.005
+```
+
+### Other joystick settings
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `autofire` | `off` | Fire continuously while the button is held |
+| `buttonwrap` | `off` | Wrap buttons at the emulated button count |
+| `circularinput` | `off` | Translate circular analog input to square output |
+| `swap34` | `off` | Swap the 3rd and 4th axes |
+
+  </Tab>
+  <Tab title="Key mapper">
+
+## Key mapper
+
+The **key mapper** lets you rebind any keyboard key, mouse button, or joystick control to any emulated input event. Use it to swap awkward key bindings, assign a gamepad button to a keyboard action, or build a complete controller profile for a keyboard-only game.
+
+Open the key mapper during gameplay:
+- **Windows / Linux:** Ctrl+F1
+- **macOS:** Cmd+F1
+
+### Interface overview
+
+The mapper shows a visual layout of a virtual keyboard and joystick. Each element is an **event** — the input DOSBox reports to the DOS program. Clicking an event reveals its current **bindings**: the physical keys, buttons, or axes that trigger it.
+
+| Control | Action |
+|---------|--------|
+| **Add** | Bind a new physical key or button to the selected event |
+| **Del** | Remove the current binding |
+| **Next** | Cycle through multiple bindings for the same event |
+| **Exit** | Return to the game — all changes are saved automatically |
+
+The **mod1**, **mod2**, **mod3** checkboxes create modified bindings that require a modifier key to be held (e.g., Ctrl+F9 for shutdown).
+
+### Remapping keys
+
+<Steps>
+  <Step title="Open the key mapper">
+    Press Ctrl+F1 (Windows/Linux) or Cmd+F1 (macOS) while DOSBox is running.
+  </Step>
+  <Step title="Select the event">
+    Click the key you want to remap on the virtual keyboard.
+  </Step>
+  <Step title="Remove the old binding">
+    Click **Del** to remove the existing binding.
+  </Step>
+  <Step title="Assign a new binding">
+    Click **Add**, then press the physical key or button you want to use.
+  </Step>
+  <Step title="Exit and save">
+    Click **Exit** — changes are saved automatically to the mapper file.
+  </Step>
+</Steps>
+
+For example, to swap Y and Z on a German keyboard: click Y on the virtual keyboard, delete its binding, add the physical Z key — then repeat for the Z event in reverse.
+
+### Mapping controller buttons to keys
+
+This is the standard approach for playing keyboard-only DOS games with a gamepad:
+
+<Steps>
+  <Step title="Disable joystick detection">
+    Set `joysticktype = hidden` in `[joystick]` so the game doesn't see the controller as a joystick.
+  </Step>
+  <Step title="Open the key mapper">
+    Press Ctrl+F1 / Cmd+F1.
+  </Step>
+  <Step title="Map each key">
+    Click the key event on the virtual keyboard (e.g., the Up arrow), click **Add**, then press the corresponding button or direction on your controller.
+  </Step>
+  <Step title="Repeat and exit">
+    Repeat for all keys the game uses, then click **Exit**.
+  </Step>
+</Steps>
+
+### Mapper files
+
+Bindings are saved to a mapper file — a plain text file that records every assignment. The default file is named `mapper-sdl2-<version>.map`, stored alongside your primary config file.
+
+Specify a custom mapper file in `[sdl]`:
+
+```ini
+[sdl]
+mapperfile = my-game.map
+```
+
+DOSBox Staging ships with preconfigured mapper files for many games in `resources/mapperfiles/`. Load one by name:
+
+```ini
+[sdl]
+mapperfile = xbox/doom.map
+```
+
+### Mapper file format
+
+Each line maps an event name to one or more bindings:
+
+```text
+event_name "binding_1" "binding_2"
+```
+
+**Keyboard bindings** use `key <scancode>`, with optional modifier flags:
+
+```text
+key 41            # Escape
+key 66 mod1       # Ctrl+F9 (mod1 = Ctrl)
+```
+
+**Joystick bindings** use `stick_N <type> <id>`:
+
+```text
+stick_0 button 0        # A button
+stick_0 axis 1 0        # Left stick up
+stick_0 hat 0 1         # D-pad up
+```
+
+**Combined example** — bind Escape to both the physical key and gamepad button 6:
+
+```text
+key_esc "key 41" "stick_0 button 6"
+```
+
+### Xbox controller reference
+
+| Control | Binding |
+|---------|---------|
+| A | `stick_0 button 0` |
+| B | `stick_0 button 1` |
+| X | `stick_0 button 2` |
+| Y | `stick_0 button 3` |
+| LB | `stick_0 button 4` |
+| RB | `stick_0 button 5` |
+| Select / Back | `stick_0 button 6` |
+| Start | `stick_0 button 7` |
+| L3 | `stick_0 button 9` |
+| R3 | `stick_0 button 10` |
+| D-pad up | `stick_0 hat 0 1` |
+| D-pad right | `stick_0 hat 0 2` |
+| D-pad down | `stick_0 hat 0 4` |
+| D-pad left | `stick_0 hat 0 8` |
+| Left stick X | `stick_0 axis 0` (0=left, 1=right) |
+| Left stick Y | `stick_0 axis 1` (0=up, 1=down) |
+| Right stick X | `stick_0 axis 3` (0=left, 1=right) |
+| Right stick Y | `stick_0 axis 4` (0=up, 1=down) |
+| LT | `stick_0 axis 2 2` |
+| RT | `stick_0 axis 5 2` |
+
+<Note>
+  Button numbers may differ between controller brands. On Linux, use `jstest` to identify the correct IDs for your controller.
+</Note>
+
+### Resetting the mapper
+
+If mappings get into a broken state, use the `--erasemapper` command-line option to delete the default mapper file and restore all bindings to their defaults.
+
+<Warning>
+  `--erasemapper` only deletes the **default** mapper file. If you're using a custom `mapperfile` path, delete or edit that file manually.
+</Warning>
+
+### Limitations
+
+- Mouse buttons and mouse movement cannot be remapped through the key mapper.
+- The mapper UI always shows a US keyboard layout, regardless of your physical keyboard. Bindings work correctly — only the visual representation uses US layout positions.
+
+</Tab>
+</Tabs>

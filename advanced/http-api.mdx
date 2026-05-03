@@ -1,0 +1,268 @@
+---
+title: "HTTP REST API for runtime memory and CPU inspection"
+description: "Enable DOSBox Staging's built-in HTTP API to read CPU registers, inspect and write memory, allocate DOS memory, and query internal DOS structures."
+---
+
+DOSBox Staging includes an HTTP REST API that exposes the internal state of the emulated machine to external tools. You can use it to display live game data in overlays, inspect and patch memory, hook functions, build cheat tools, or investigate bugs without modifying game files. All endpoints read or write state atomically between CPU steps, so you always get a consistent snapshot.
+
+<Warning>
+  This feature is intended for developers and advanced users. The API gives full control over the emulator. It binds to `localhost` only by default — never expose it to untrusted networks.
+</Warning>
+
+<Note>
+  The HTTP API has been primarily tested with `core = normal`. Behaviour with other CPU cores may vary.
+</Note>
+
+## Enabling the API
+
+Add the following to your DOSBox Staging config file and restart:
+
+```ini
+[webserver]
+webserver_enabled = on
+```
+
+Once DOSBox is running, open `http://localhost:8080/` in a browser to see the built-in API documentation.
+
+## API endpoints
+
+<AccordionGroup>
+  <Accordion title="GET /api/cpu — CPU registers">
+    Returns all x86 CPU registers as a JSON object.
+
+    **Response fields:** `eax`, `ebx`, `ecx`, `edx`, `esi`, `edi`, `esp`, `ebp`, `eip`, `flags`, `cs`, `ds`, `es`, `ss`, `fs`, `gs`.
+
+    **Example:**
+
+    ```bash
+    curl http://localhost:8080/api/cpu
+    ```
+
+    ```json
+    {
+      "eax": 0,
+      "ebx": 0,
+      "ecx": 0,
+      "edx": 0,
+      "esi": 0,
+      "edi": 0,
+      "esp": 65534,
+      "ebp": 0,
+      "eip": 256,
+      "flags": 518,
+      "cs": 2606,
+      "ds": 2606,
+      "es": 2606,
+      "ss": 2606,
+      "fs": 0,
+      "gs": 0
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="GET /api/memory/:offset/:len — Read memory (linear address)">
+    Read memory at the given linear address.
+
+    **Path parameters:**
+    - `:offset` — linear memory address (decimal or hex with `0x` prefix).
+    - `:len` — number of bytes to read (decimal or hex with `0x` prefix). Maximum: 128 MiB per request.
+
+    **Response:** Raw binary data by default. Set `Accept: application/json` to receive a JSON object with the data Base64-encoded in the `data` field.
+
+    **Example — download the entire conventional memory area:**
+
+    ```bash
+    curl http://localhost:8080/api/memory/0/0x100000 --output conventional.bin
+    ```
+
+    **Example — read 16 bytes at address 0x1000 as JSON:**
+
+    ```bash
+    curl -H "Accept: application/json" \
+         http://localhost:8080/api/memory/0x1000/16
+    ```
+  </Accordion>
+
+  <Accordion title="GET /api/memory/:segment/:offset/:len — Read memory (segmented address)">
+    Read memory using a segment:offset address.
+
+    **Path parameters:**
+    - `:segment` — segment register name (`CS`, `SS`, `DS`, `ES`, `FS`, `GS`) or a numeric value (decimal or hex with `0x` prefix).
+    - `:offset` — offset within the segment (decimal or hex with `0x` prefix).
+    - `:len` — number of bytes to read. Maximum: 128 MiB per request.
+
+    **Response:** Same as the linear memory read endpoint.
+
+    **Example — read 32 bytes relative to DS:**
+
+    ```bash
+    curl -H "Accept: application/json" \
+         http://localhost:8080/api/memory/DS/0/32
+    ```
+  </Accordion>
+
+  <Accordion title="PUT /api/memory/:offset — Write memory (linear address)">
+    Write data to a linear memory address.
+
+    **Path parameters:** Same as the read endpoint.
+
+    **Request body:** Raw binary with `Content-Type: application/octet-stream`, or a JSON object with a Base64-encoded `data` field and `Content-Type: application/json`.
+
+    **Atomic compare-and-swap:** Set the `If-Match` header to the Base64-encoded expected contents. Returns HTTP 412 (Precondition Failed) if the current memory does not match.
+
+    **Example — write bytes via JSON:**
+
+    ```bash
+    curl -X PUT \
+         -H "Content-Type: application/json" \
+         -d '{"data": "AQID"}' \
+         http://localhost:8080/api/memory/0x1000
+    ```
+  </Accordion>
+
+  <Accordion title="PUT /api/memory/:segment/:offset — Write memory (segmented address)">
+    Write data to a segment:offset address. Path parameters and request body work identically to the linear write endpoint.
+
+    **Example:**
+
+    ```bash
+    curl -X PUT \
+         -H "Content-Type: application/octet-stream" \
+         --data-binary @patch.bin \
+         http://localhost:8080/api/memory/DS/0x100
+    ```
+  </Accordion>
+
+  <Accordion title="POST /api/memory/allocate — Allocate DOS memory">
+    Allocate memory from the emulated machine.
+
+    **Request body:**
+
+    ```json
+    {
+      "size": 1024,
+      "area": "conv",
+      "strategy": "best_fit"
+    }
+    ```
+
+    - `area` — `conv` (conventional memory), `UMA` (upper memory area), or `XMS`.
+    - `strategy` — `best_fit` (default), `first_fit`, or `last_fit`. The XMS allocator only supports `best_fit`.
+
+    **Response:**
+
+    ```json
+    {
+      "addr": 655360
+    }
+    ```
+
+    Returns HTTP 503 if allocation fails.
+
+    **Example:**
+
+    ```bash
+    curl -X POST \
+         -H "Content-Type: application/json" \
+         -d '{"size": 1024, "area": "conv", "strategy": "best_fit"}' \
+         http://localhost:8080/api/memory/allocate
+    ```
+  </Accordion>
+
+  <Accordion title="POST /api/memory/free — Free DOS memory">
+    Free previously allocated memory.
+
+    **Request body:**
+
+    ```json
+    {
+      "addr": 655360
+    }
+    ```
+
+    Returns HTTP 400 on invalid addresses.
+
+    **Example:**
+
+    ```bash
+    curl -X POST \
+         -H "Content-Type: application/json" \
+         -d '{"addr": 655360}' \
+         http://localhost:8080/api/memory/free
+    ```
+  </Accordion>
+
+  <Accordion title="GET /api/dos — DOS internal data structures">
+    Returns pointers to internal DOS data structures.
+
+    **Response fields:**
+    - `listOfLists` — pointer to the DOS list of lists (INT 21h AH=52h).
+    - `dosSwappableArea` — DOS swappable area pointer (INT 21h AX=5D06h).
+    - `firstShell` — pointer to the first shell's PSP (start of usable memory).
+
+    **Example:**
+
+    ```bash
+    curl http://localhost:8080/api/dos
+    ```
+  </Accordion>
+
+  <Accordion title="GET /api/info — System information">
+    Returns the DOSBox Staging version and relevant filesystem paths.
+
+    **Example:**
+
+    ```bash
+    curl http://localhost:8080/api/info
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Example tools
+
+The `extras/api/` directory in the DOSBox Staging source tree contains ready-to-use HTML tools and a JavaScript API wrapper. Copy the files to the `webserver` directory inside your DOSBox configuration folder to use them.
+
+### Memory Monitor
+
+Monitor and manipulate memory locations live. Run Commander Keen Episode 4 with the default configuration, then import a config string into the Memory Monitor to see current values for lives and ammo — and edit them directly.
+
+### Memory Scanner
+
+A lightweight equivalent of Cheat Engine. Identify where specific values are stored in memory:
+
+<Steps>
+  <Step title="Search for a known value">
+    Enter a known value (such as your current ammo count) and run the initial scan.
+  </Step>
+  <Step title="Change the value in-game">
+    Perform an action that changes the value (use or pick up ammo, lose a life, etc.).
+  </Step>
+  <Step title="Filter the results">
+    Search again with the new value to narrow down the list. Repeat until only one address remains.
+  </Step>
+</Steps>
+
+### Memory Viewer
+
+A memory viewer with a built-in x86 disassembler.
+
+### JavaScript API wrapper
+
+The `api.js` file provides a JavaScript class for building custom tools on top of the HTTP API. It handles Base64 encoding/decoding, segment register resolution, and compare-and-swap operations. TypeScript type definitions are available in `api.d.ts`.
+
+## Configuration settings
+
+Set web server parameters in the `[webserver]` section of your config file:
+
+```ini
+[webserver]
+webserver_enabled     = on
+webserver_port        = 8080
+webserver_bind_address = 127.0.0.1
+```
+
+| Setting                  | Default       | Description                                                                 |
+|--------------------------|---------------|-----------------------------------------------------------------------------|
+| `webserver_enabled`      | `off`         | Enable the HTTP REST API.                                                   |
+| `webserver_port`         | `8080`        | TCP port to listen on.                                                      |
+| `webserver_bind_address` | `127.0.0.1`   | IP address to bind to. Do not change this to a non-loopback address unless you fully understand the security implications. |

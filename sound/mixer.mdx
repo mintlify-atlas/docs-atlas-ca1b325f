@@ -1,0 +1,260 @@
+---
+title: "DOSBox Staging Mixer: Volume, Reverb, and Crossfeed"
+description: "Configure per-channel volume, reverb, chorus, and crossfeed in the DOSBox mixer, and control everything at runtime with the MIXER command."
+---
+
+The DOSBox Staging mixer combines the output of all emulated sound devices into a single stereo signal. Every device gets its own named **mixer channel**, and you can independently adjust volume, stereo panning, reverb, chorus, and crossfeed for each one — either in the configuration file or live from the DOS prompt while a game is running.
+
+The mixer uses a 32-bit floating-point processing path internally, so high per-channel volume settings cannot cause clipping within the mixer itself. A fixed 20 Hz high-pass filter on the master output removes DC offset and subsonic rumble. An auto-levelling compressor on the master channel catches any peaks that would otherwise cause audible distortion.
+
+The default master volume is 50% (−6 dB). This leaves headroom for games with loud output. Raise it per game as needed — either in the `[autoexec]` section of a per-game config, or interactively at the DOS prompt.
+
+## The MIXER command
+
+Run `MIXER` from the DOS prompt with no arguments to display the current state of all channels:
+
+```
+MIXER
+```
+
+Run `MIXER /?` to display a summary of all available options.
+
+### Default channels
+
+With the default configuration, four channels are active:
+
+| Channel | Device | Notes |
+|---|---|---|
+| **MASTER** | Final summed stereo output | Always enabled; always stereo |
+| **OPL** | Yamaha OPL FM synthesiser | Mono or stereo depending on the emulated card |
+| **PCSPEAKER** | PC speaker | Mono |
+| **SB** | Sound Blaster digital audio | Mono or stereo depending on the emulated model |
+
+Some emulated devices contain multiple sub-devices, each with its own channel. The Sound Blaster 16, for example, routes digital audio to **SB** and the onboard OPL3 synthesiser to **OPL**.
+
+## Changing channel settings
+
+### Volume
+
+Set a channel's volume as a percentage of the default:
+
+```
+MIXER OPL 150
+```
+
+Set the left and right channels independently by separating values with a colon:
+
+```
+MIXER OPL 200:100
+```
+
+### Reverb and chorus
+
+Set reverb (`R`) and chorus (`C`) levels on a specific channel:
+
+```
+MIXER OPL R50 C30
+```
+
+This sets the **OPL** channel's reverb level to 50 and chorus level to 30.
+
+### Crossfeed
+
+Set the crossfeed strength on a specific channel with `X`:
+
+```
+MIXER OPL X50
+```
+
+### Reverse stereo
+
+Swap the left and right channels of a stereo channel:
+
+```
+MIXER SB REVERSE
+```
+
+Some Sound Blaster models — particularly the Sound Blaster Pro — had the left and right digital audio channels reversed compared to later cards. If sound effects seem to come from the wrong direction, try reversing the **SB** channel.
+
+### Combined commands
+
+You can change multiple channels in a single command. This example sets global crossfeed to 30, raises the OPL channel volume and adds reverb and chorus, then applies crossfeed and reverb stereo to the SB channel:
+
+```
+MIXER x30 opl 150 r50 c30 sb x10 reverse
+```
+
+## Mixer effects
+
+### Crossfeed
+
+Headphone listening can be unpleasant when instruments are hard-panned 100% left or 100% right — a common pattern in dual OPL and CMS (Game Blaster) soundtracks. Crossfeed remedies this by mixing a portion of each channel's signal into the opposite channel.
+
+The crossfeed presets apply to the **OPL** and **CMS** channels by default. Use the `MIXER` command to apply crossfeed to other channels.
+
+| Preset | Strength | Notes |
+|---|---|---|
+| `off` | 0 | Default — no crossfeed |
+| `light` | 15 | Subtle blend |
+| `normal` | 40 | Good general setting |
+| `strong` | 65 | Obvious blend |
+
+### Reverb
+
+Reverb adds a sense of acoustic space to the sound. All reverb presets apply a noticeable amount to synthesiser channels and a subtle amount to digital audio channels. Synths with built-in reverb (such as the Roland MT-32) are excluded.
+
+| Preset | Description |
+|---|---|
+| `off` | Default — no reverb |
+| `tiny` | Small integrated speaker in a room; designed for PC speaker, Tandy, PS/1, and LPT DAC |
+| `small` | Subtle space; good for games using a single OPL channel for both music and effects |
+| `medium` | Medium room; works well with a wide variety of games |
+| `large` | Large hall; recommended when separate channels handle music and digital audio |
+| `huge` | Strong large-hall variant; works well in atmospheric soundtracks |
+
+### Chorus
+
+Chorus adds a sense of stereo movement to synthesised sound. Presets apply to synthesiser channels only (excluding synths with built-in chorus, such as the Roland MT-32).
+
+| Preset | Description |
+|---|---|
+| `off` | Default — no chorus |
+| `light` | Subtle; especially suited for synth music with lots of white noise |
+| `normal` | Works well with a wide variety of games |
+| `strong` | Obvious, upfront chorus effect |
+
+<Tip>
+  Crossfeed, reverb, and chorus work well together. A typical configuration might enable `crossfeed = normal` for stereo OPL music, `reverb = medium` for general warmth, and `chorus = light` to add movement. Community-contributed audio recommendations for specific games are available on the [DOSBox Staging wiki](https://github.com/dosbox-staging/dosbox-staging/wiki/Audio-configuration-recommendations).
+</Tip>
+
+## Denoiser
+
+The OPL synth and the original SC-55 mk1 Sound Canvas models produce very low-level residual noise as part of authentic hardware emulation. The denoiser (a noise gate) removes this without degrading the useful audio signal. It is enabled by default.
+
+The Sound Canvas noise affects all games on mk1 models. The OPL noise is only triggered by certain games, including Beneath a Steel Sky, Doom (E2M2), Gods, and Tetris Classic (1992).
+
+## Minimising audio glitches
+
+If you hear occasional clicks or pops, increasing the audio buffer sizes usually helps. The trade-off is higher audio latency.
+
+```ini
+[mixer]
+blocksize = 2048
+prebuffer = 50
+```
+
+The `blocksize` should be a power of two: 256, 512, 1024, 2048, 4096, or 8192. The `prebuffer` can be any value in milliseconds. The defaults are `blocksize = 1024` and `prebuffer = 25` on Windows, and `blocksize = 512` and `prebuffer = 20` on macOS and Linux.
+
+## All mixer channels
+
+| Channel | Device | Stereo |
+|---|---|---|
+| **CDAUDIO** | CD-DA digital audio | Yes |
+| **CMS** | Creative Music System (C/MS) synthesiser | Yes |
+| **COVOX** | Covox Speech Thing digital audio | No |
+| **DISNEY** | Disney Sound Source digital audio | No |
+| **DISKNOISE** | Disk noise emulation | No |
+| **FSYNTH** | FluidSynth MIDI synthesiser | Yes |
+| **GUS** | Gravis UltraSound digital audio | Yes |
+| **IMFC** | IBM Music Feature Card | Yes |
+| **INNOVATION** | Innovation SSI-2001 synthesiser | No |
+| **MASTER** | Master output channel | Yes |
+| **MT32** | Roland MT-32 MIDI synthesiser | Yes |
+| **OPL** | Yamaha OPL synthesiser | Yes* |
+| **PCSPEAKER** | PC speaker | No |
+| **PS1** | IBM PS/1 Audio synthesiser | No |
+| **PS1DAC** | IBM PS/1 Audio digital audio | No |
+| **REELMAGIC** | ReelMagic MPEG audio | Yes |
+| **SB** | Sound Blaster digital audio | Yes* |
+| **SOUNDCANVAS** | Roland Sound Canvas synthesiser | Yes |
+| **STON1** | Stereo-on-1 digital audio | Yes |
+| **TANDY** | Tandy 1000 synthesiser | No |
+| **TANDYDAC** | Tandy 1000 digital audio | No |
+
+*Mono or stereo depending on the selected model.
+
+## Configuration settings
+
+All mixer settings go in the `[mixer]` section.
+
+```ini
+[mixer]
+nosound    = off
+rate       = 48000
+blocksize  = 1024
+prebuffer  = 25
+negotiate  = off
+compressor = on
+denoiser   = on
+```
+
+<AccordionGroup>
+  <Accordion title="nosound">
+    Enable silent mode (`off` by default). Sound is still emulated — DOSBox simply sends no audio to the host. Capturing emulated audio to a WAV file still works in silent mode.
+
+    Possible values: `on`, `off`
+  </Accordion>
+  <Accordion title="rate">
+    Sample rate of the internal audio mixer in Hz (`48000` by default). Valid range is 8000 to 96000 Hz.
+
+    The operating system will most likely resample non-standard rates to 48000 Hz anyway. Leave this at the default unless you have a specific reason to change it.
+  </Accordion>
+  <Accordion title="blocksize">
+    Block size of the host audio device in sample frames (`1024` on Windows, `512` on other platforms). Valid range is 64 to 8192. Use power-of-two values. Larger values reduce audio stuttering at the cost of higher latency.
+  </Accordion>
+  <Accordion title="prebuffer">
+    How many milliseconds of audio to render in advance on top of `blocksize` (`25` on Windows, `20` elsewhere). Larger values reduce stuttering at the cost of higher latency.
+  </Accordion>
+  <Accordion title="negotiate">
+    Negotiate a better `blocksize` with the host audio driver (`off` on Windows, `on` elsewhere). Enable if you are getting no audio or stuttering. Disable to force the manually configured `blocksize` value.
+
+    Possible values: `on`, `off`
+  </Accordion>
+  <Accordion title="compressor">
+    Enable the auto-levelling dynamic range compressor on the master channel (`on` by default). The compressor reduces the volume of loud peaks to prevent harsh clipping — useful in games where explosions and effects are much louder than background music.
+
+    The trade-off is a subtle "pumping" effect: a very loud sound can briefly pull down the overall volume. If this is distracting, lower the master volume (`MIXER MASTER 50`) so that peaks stay below the clipping threshold and the compressor stays inactive.
+
+    Possible values: `on`, `off`
+  </Accordion>
+  <Accordion title="denoiser">
+    Remove low-level residual noise from the OPL synth and Roland Sound Canvas output (`on` by default). The noise is authentic — real hardware behaved the same way — but the denoiser eliminates it without any audible degradation to the useful audio signal.
+
+    Possible values: `on`, `off`
+  </Accordion>
+</AccordionGroup>
+
+## Mixer effects configuration settings
+
+Crossfeed, reverb, and chorus are configured in the `[mixer]` section alongside the core mixer settings.
+
+```ini
+[mixer]
+crossfeed = normal
+reverb    = medium
+chorus    = light
+```
+
+<AccordionGroup>
+  <Accordion title="crossfeed">
+    Set crossfeed on the **OPL** and **CMS** mixer channels. Many games pan instruments 100% left and 100% right on these devices, which is unpleasant on headphones. Crossfeed mixes a portion of each channel into the opposite one.
+
+    Possible values: `off` (default), `on` (normal preset), `light` (strength 15), `normal` (strength 40), `strong` (strength 65).
+
+    Use the `MIXER` command to apply crossfeed to other channels or fine-tune per-channel strength.
+  </Accordion>
+  <Accordion title="reverb">
+    Reverb effect that adds a sense of acoustic space. Presets apply a noticeable amount to synthesiser channels and a subtle amount to digital audio channels. Synths with built-in reverb (e.g., Roland MT-32) are excluded.
+
+    Possible values: `off` (default), `on` (medium preset), `tiny`, `small`, `medium`, `large`, `huge`.
+
+    Use the `MIXER` command to fine-tune per-channel reverb levels.
+  </Accordion>
+  <Accordion title="chorus">
+    Chorus effect that adds stereo movement. Presets apply to synthesiser channels only (excluding synths with built-in chorus, e.g., Roland MT-32).
+
+    Possible values: `off` (default), `on` (normal preset), `light`, `normal`, `strong`.
+
+    Use the `MIXER` command to fine-tune per-channel chorus levels.
+  </Accordion>
+</AccordionGroup>

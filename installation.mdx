@@ -1,0 +1,172 @@
+---
+title: "Installing DOSBox Staging on Windows, macOS, Linux"
+description: "Download and install DOSBox Staging on your platform. Includes Windows Defender, macOS Gatekeeper notes, and Linux tarball setup instructions."
+---
+
+DOSBox Staging distributes official pre-built binaries for Windows (x86_64), macOS (universal binary for Intel and Apple silicon), and Linux (x86_64). You do not need to compile from source to get started. Install the latest stable release for your platform by following the steps below, and you will have a working DOS emulation environment in a few minutes.
+
+<Tabs>
+  <Tab title="Windows">
+
+    DOSBox Staging requires **64-bit Windows 8, 10, or 11**. An x86 processor with SSSE3 support is required (all processors made after roughly 2007 qualify).
+
+    <Steps>
+      <Step title="Download the installer">
+        Download the latest stable installer:
+
+        **[dosbox-staging-windows-x64-v0.82.2-setup.exe](https://github.com/dosbox-staging/dosbox-staging/releases/download/v0.82.2/dosbox-staging-windows-x64-v0.82.2-setup.exe)**
+
+        A portable ZIP is also available if you prefer not to use an installer:
+
+        [dosbox-staging-windows-x64-v0.82.2.zip](https://github.com/dosbox-staging/dosbox-staging/releases/download/v0.82.2/dosbox-staging-windows-x64-v0.82.2.zip)
+      </Step>
+
+      <Step title="Run the installer">
+        Launch the `.exe` file and accept the default options. The installer adds a Start Menu shortcut, a desktop shortcut, and an **Open with DOSBox Staging** right-click context menu entry in Windows Explorer. Do not change the installation directory unless you have a specific reason to.
+      </Step>
+
+      <Step title="Handle Windows Defender SmartScreen">
+        Windows Defender SmartScreen may block DOSBox Staging the first time you launch it. This is a false positive — DOSBox Staging contains no malicious code. Antivirus software commonly flags emulators because they access hardware registers and perform unusual memory operations.
+
+        To allow the application to run, click **More info** in the SmartScreen dialog, then click **Run anyway**.
+
+        Alternatively, right-click `dosbox.exe`, select **Properties**, tick **Unblock**, and press **OK**.
+
+        <Warning>
+          You may need to repeat the unblocking step after upgrading to a new version, as SmartScreen treats each new executable as unfamiliar until it accumulates enough usage data.
+        </Warning>
+
+        To also eliminate the 3–5 second startup delay caused by real-time antivirus scanning, add an exclusion in **Windows Security** for the DOSBox Staging installation folder.
+      </Step>
+
+      <Step title="Verify the installation">
+        Open the Start Menu, search for **DOSBox Staging**, and launch it. You should see the DOSBox Staging window open with a `Z:\>` prompt. Close it — you are ready to set up your first game.
+      </Step>
+    </Steps>
+
+    <Note>
+      The installer is built with Inno Setup. For silent installs or custom deployment, see the [Inno Setup command-line parameters](https://jrsoftware.org/ishelp/index.php?topic=setupcmdline).
+    </Note>
+
+  </Tab>
+  <Tab title="macOS">
+
+    DOSBox Staging requires **macOS 11 (Big Sur) or later**. The download is a universal binary that runs natively on both Intel Macs and Apple silicon (M-series) Macs.
+
+    <Steps>
+      <Step title="Download the DMG">
+        Download the latest stable universal binary:
+
+        **[dosbox-staging-macOS-v0.82.2.dmg](https://github.com/dosbox-staging/dosbox-staging/releases/download/v0.82.2/dosbox-staging-macOS-v0.82.2.dmg)**
+      </Step>
+
+      <Step title="Install the application">
+        Open the `.dmg` file. Drag the **DOSBox Staging** icon into your **Applications** folder.
+
+        <Tip>
+          Keep the `.dmg` disk image — it also contains a **Start DOSBox Staging** helper icon you can copy into individual game folders for convenient per-game launching.
+        </Tip>
+      </Step>
+
+      <Step title="Handle Apple Gatekeeper (if needed)">
+        Releases from 0.81.0 onwards are notarized by Apple, so Gatekeeper should allow them without any extra steps on macOS Sequoia 15 or later.
+
+        If you encounter a Gatekeeper warning with an older release or a development build, use one of these methods:
+
+        **macOS Sequoia 15:**
+        1. Open **DOSBox Staging** once. Click **Done** in the dialog.
+        2. Open **System Settings** → **Privacy & Security**, scroll down, and click **Open Anyway** next to the DOSBox Staging entry.
+
+        **macOS Sonoma 14 or earlier:**
+        1. Control-click (or right-click) on **DOSBox Staging** in the Applications folder.
+        2. Click **Open** in the context menu.
+        3. Click **OK** to dismiss the first dialog.
+        4. Open the app a second time — Gatekeeper will now show an **Open** button. Click it.
+
+        You only need to do this once per version. After the first authorized launch, the app opens normally.
+      </Step>
+
+      <Step title="Verify the installation">
+        Launch **DOSBox Staging** from your Applications folder. A window should open with a `Z:\>` prompt. Close it — you are ready to configure your first game.
+      </Step>
+    </Steps>
+
+  </Tab>
+  <Tab title="Linux">
+
+    The official Linux release is a self-contained x86_64 tarball. It depends only on the C/C++ runtime, ALSA, and OpenGL system libraries — all other dependencies are statically linked.
+
+    <Steps>
+      <Step title="Download the tarball">
+        Download the latest stable release:
+
+        **[dosbox-staging-linux-x86_64-v0.82.2.tar.xz](https://github.com/dosbox-staging/dosbox-staging/releases/download/v0.82.2/dosbox-staging-linux-x86_64-v0.82.2.tar.xz)**
+
+        SHA-256: `bc229df72ea103b7865cdca67324772dbffa8e58866477e69a79638b723a0442`
+      </Step>
+
+      <Step title="Extract the archive">
+        ```bash
+        tar -xf dosbox-staging-linux-x86_64-v0.82.2.tar.xz
+        cd dosbox-staging-linux-x86_64-v0.82.2
+        ```
+      </Step>
+
+      <Step title="Install application icons">
+        Run the bundled icon installation script so DOSBox Staging appears correctly in your application launcher:
+
+        ```bash
+        ./install-icons.sh
+        ```
+      </Step>
+
+      <Step title="Make dosbox available system-wide (optional)">
+        Symlink the binary into your PATH so you can run `dosbox` from any directory:
+
+        ```bash
+        ln -s "$(pwd)/dosbox" ~/.local/bin/dosbox
+        ```
+
+        Confirm the correct version is on your PATH:
+
+        ```bash
+        dosbox --version
+        ```
+
+        You should see output similar to:
+
+        ```
+        dosbox-staging, version 0.82.2
+
+        Copyright (C) 2020-2026  The DOSBox Staging Team
+        License: GNU GPL-2.0-or-later <https://www.gnu.org/licenses/gpl-2.0.html>
+        ```
+      </Step>
+    </Steps>
+
+    <Warning>
+      Distribution-packaged versions of DOSBox Staging (APT, DNF, Flatpak, Snap, AUR, etc.) are maintained by third parties and may differ from the official release in library versions, configuration file paths, or feature availability. The DOSBox Staging team only provides support for the official tarball release. If you encounter a bug, reproduce it with the official tarball before filing a report.
+    </Warning>
+
+  </Tab>
+</Tabs>
+
+## Primary configuration file locations
+
+When DOSBox Staging starts for the first time, it creates a primary (global) configuration file at a platform-specific location. Per-game `dosbox.conf` files you create later override these global defaults.
+
+| Platform | Location |
+|----------|----------|
+| **Windows** | `C:\Users\%USERNAME%\AppData\Local\DOSBox\dosbox-staging.conf` |
+| **macOS** | `~/Library/Preferences/DOSBox/dosbox-staging.conf` |
+| **Linux** | `~/.config/dosbox/dosbox-staging.conf` |
+
+You can also print the path by running:
+
+```bash
+dosbox --printconf
+```
+
+<Info>
+  If you have previously used DOSBox Staging and want to start fresh with the defaults for the latest version, back up your existing primary config by renaming it from `.conf` to `.bak`. DOSBox Staging will regenerate the file with current defaults on the next launch.
+</Info>

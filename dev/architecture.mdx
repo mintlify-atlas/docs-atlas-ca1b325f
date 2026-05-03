@@ -1,0 +1,139 @@
+---
+title: "DOSBox Staging Codebase and Architecture Overview"
+description: "A tour of the DOSBox Staging source tree: subsystem directories, C++20 language choices, CMake and vcpkg build system, and the full dependency table."
+---
+
+DOSBox Staging is a modern C++20 codebase built with CMake and Ninja (or Visual Studio 2022 on Windows), using vcpkg for dependency management. The source is organised into focused subsystem directories under `src/`, each responsible for a clearly scoped area of emulation. Understanding the directory structure is the fastest way to orient yourself before diving into a specific area.
+
+## Source tree layout
+
+```
+src/
+├── audio/         — audio mixing engine and CLAP plugin host
+├── capture/       — screenshot, video (ZMBV), and audio capture
+├── config/        — configuration file parsing
+├── cpu/           — x86 CPU interpreter and dynamic recompilers
+├── debugger/      — interactive built-in debugger (optional)
+├── dos/           — MS-DOS kernel emulation (INT 21h, memory, FS)
+├── fpu/           — x87 floating-point unit emulation
+├── gui/           — window, renderer, scaling, OSD
+├── hardware/      — graphics adapters, sound cards, I/O devices
+├── ints/          — BIOS interrupt handlers (INT 10h, 13h, 16h…)
+├── libs/          — vendored third-party libraries (Loguru, etc.)
+├── midi/          — MIDI backends (FluidSynth, MT-32, hardware)
+├── misc/          — utilities and cross-cutting helpers
+├── network/       — IPX and serial-over-TCP networking
+├── platform/      — platform-specific code (Windows, macOS, Linux)
+├── shell/         — DOS shell / COMMAND.COM replacement
+├── utils/         — general-purpose utility code
+├── webserver/     — HTTP REST API server
+├── dosbox.cpp     — emulator initialisation and main loop
+└── main.cpp       — entry point
+```
+
+### Subsystem descriptions
+
+<AccordionGroup>
+  <Accordion title="audio/ — audio subsystem">
+    The audio mixing engine, PCM output pipeline, and the CLAP audio plugin host. This is where audio samples from all devices are mixed together and delivered to the host operating system. Also contains the Nuked SC-55 CLAP plugin integration.
+  </Accordion>
+
+  <Accordion title="capture/ — screen, audio, and video capture">
+    Handles capturing screenshots (PNG), audio recordings (WAV/OGG), and video recordings (ZMBV codec). The `capture/image/` subdirectory contains the image encoding pipeline; `capture/` at the top level coordinates capture state across all output types.
+  </Accordion>
+
+  <Accordion title="cpu/ — x86 CPU emulation">
+    The core x86/x86-16 CPU emulator. Contains the interpreter core, the dynamic recompiler cores (`core_dyn_x86/`, `core_dynrec/`), the normal interpreter (`core_normal/`), and simple/full core variants. This is one of the most performance-sensitive areas of the emulator.
+  </Accordion>
+
+  <Accordion title="debugger/ — built-in debugger">
+    The optional interactive debugger that can be enabled at compile time. Provides a text-mode interface for inspecting CPU registers, stepping through code, setting breakpoints, and examining memory — all while the emulator is running.
+  </Accordion>
+
+  <Accordion title="dos/ — DOS operating system emulation">
+    Implements the MS-DOS kernel: the DOS API (INT 21h), the file system layer, memory management (conventional, EMS, XMS), the program loader, and DOS data structures. This is the largest subsystem in the codebase.
+  </Accordion>
+
+  <Accordion title="fpu/ — floating-point unit emulation">
+    Emulates the x87 floating-point unit (8087/80287/80387). Works in concert with the CPU core.
+  </Accordion>
+
+  <Accordion title="gui/ — graphical user interface">
+    Manages the emulator window, the SDL-based texture renderer, the OpenGL renderer, aspect-ratio correction, output scaling, and the on-screen display. Also contains the menu bar and configuration dialog (where present on macOS/Windows).
+  </Accordion>
+
+  <Accordion title="hardware/ — hardware device emulation">
+    The largest category of emulated devices: graphics adapters (CGA, EGA, VGA, SVGA, Hercules), sound cards (Sound Blaster, AdLib, PC speaker, Tandy, Disney Sound Source), floppy and hard disk controllers, serial and parallel ports, joystick, and the PIT/PIC/DMA chips.
+  </Accordion>
+
+  <Accordion title="ints/ — BIOS interrupt handlers">
+    Emulated BIOS interrupt routines (INT 10h video, INT 13h disk, INT 16h keyboard, INT 1Ah timer, and others). These implement the firmware-level interface that DOS and DOS programs depend on.
+  </Accordion>
+
+  <Accordion title="midi/ — MIDI subsystem">
+    MIDI output backends: FluidSynth (General MIDI via SoundFont), the Roland MT-32 and CM-32L emulator (libmt32emu), Nuked SC-55 CLAP, external MIDI hardware via OS APIs, and the Sound Canvas network backend.
+  </Accordion>
+
+  <Accordion title="network/ — networking">
+    IPX emulation for LAN games and serial-port emulation over TCP. Uses the Asio library for cross-platform networking and libslirp for TCP/IP stack emulation (loaded on-demand at runtime).
+  </Accordion>
+
+  <Accordion title="shell/ — DOS shell">
+    The `COMMAND.COM` replacement: command parsing, built-in commands (`DIR`, `CD`, `COPY`, `SET`, `AUTOEXEC.BAT` execution, etc.), and the interactive command prompt.
+  </Accordion>
+
+  <Accordion title="webserver/ — HTTP REST API">
+    The embedded HTTP server that exposes the internal state of the emulated machine via a REST API. Disabled by default; enable with `webserver_enabled = on`. See the [HTTP API reference](/dev/http-api-reference) for full documentation.
+  </Accordion>
+
+  <Accordion title="libs/ — vendored third-party libraries">
+    Small third-party libraries vendored directly into the source tree (e.g., Loguru for logging). These follow their own coding conventions and are excluded from the project's style rules.
+  </Accordion>
+</AccordionGroup>
+
+## Build system and toolchain
+
+| Aspect | Details |
+|--------|---------|
+| **Language** | C++20 |
+| **Build system** | CMake + Ninja (Linux, macOS) or Visual Studio 2022 (Windows) |
+| **Dependency manager** | vcpkg |
+| **Version control** | Git |
+| **Logging** | [Loguru for C++](https://github.com/emilk/loguru) |
+| **CI** | GitHub Actions (Linux x86_64, macOS x86_64/arm64, Windows MSVC) |
+| **Static analysis** | PVS-Studio, clang-tidy |
+| **Dynamic analysis** | AddressSanitizer, UBSan, ThreadSanitizer |
+| **Code formatting** | clang-format |
+| **Unit testing** | GoogleTest via CTest |
+
+## Dependencies
+
+| Library | Provides | vcpkg package | Optional? |
+|---------|----------|--------------|-----------|
+| [FluidSynth](https://www.fluidsynth.org/) | General MIDI playback | `fluidsynth` | No |
+| [GoogleTest](https://github.com/google/googletest) | Unit testing | `gtest` | Yes |
+| [IIR](https://github.com/berndporr/iir1) | Audio filtering | `iir1` | No |
+| [libmt32emu](https://github.com/munt/munt) | Roland MT-32 and CM-32L emulation | `libmt32emu` | Yes |
+| [libpng](http://www.libpng.org/pub/png/libpng.html) | PNG encoding for screen captures | `libpng` | No |
+| [libslirp](https://gitlab.freedesktop.org/slirp/libslirp) | General-purpose TCP/IP emulator | `libslirp` | Yes |
+| [Opus File](https://opus-codec.org/) | CD Audio playback for Opus tracks | `opusfile` | No |
+| [SDL 2](https://github.com/libsdl-org/SDL) | OS-agnostic video, audio, and input | `sdl2` | No |
+| [SDL_image 2](https://github.com/libsdl-org/SDL_image) | Image decoding | `sdl2-image` | No |
+| [Asio](https://think-async.com/Asio/) | Network API for serial and IPX | `asio` | No |
+| [SpeexDSP](https://github.com/xiph/speexdsp) | Audio resampling | `speexdsp` | No |
+| [zlib-ng](https://github.com/zlib-ng/zlib-ng) | ZMBV video capture | `zlib-ng` | Yes¹ |
+
+_¹ Plain zlib can be used instead of zlib-ng._
+
+<Note>
+  **libslirp** is built as a separate dynamic library via the [dosbox-staging-ext](https://github.com/dosbox-staging/dosbox-staging-ext) project and loaded on-demand at runtime. It is not linked at build time.
+</Note>
+
+## Source analysis tools
+
+The CI pipeline runs several static analysis tools on every commit to `main`:
+
+- **[PVS-Studio](https://pvs-studio.com/)** — C++ static analyser
+- **[Pylint](https://pypi.org/project/pylint/)** — Python static analyser (for build scripts)
+- **[markdownlint](https://github.com/DavidAnson/markdownlint)** — Markdown style checker
+- **[ShellCheck](https://www.shellcheck.net/)** — Shell script analyser

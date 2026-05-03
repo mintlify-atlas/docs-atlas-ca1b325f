@@ -1,0 +1,117 @@
+---
+title: "Running and Filtering Unit Tests in DOSBox Staging"
+description: "How to run the unit test suite with ctest, filter tests with GTest syntax, run test binaries directly, and use sanitizer builds to catch memory errors."
+---
+
+DOSBox Staging uses [GoogleTest](https://github.com/google/googletest) for unit testing, with [CTest](https://cmake.org/cmake/help/latest/manual/ctest.1.html) as the test runner. Unit tests are built by default whenever you configure the project. This page covers how to build a debug configuration suitable for testing, run the full test suite, narrow down to individual test cases, and use sanitizer builds to catch memory and threading bugs.
+
+## Building a debug configuration
+
+Unit tests are compiled into the `tests/` subdirectory of your build output. Use the `debug-linux` CMake preset (or the equivalent for your platform) to get a debug build with tests enabled:
+
+```bash
+cmake --preset=debug-linux
+cmake --build --preset=debug-linux
+```
+
+To skip building unit tests — for example, when creating a distribution package — pass `-DOPT_TESTS=OFF` at configure time:
+
+```bash
+cmake --preset=release-linux -DOPT_TESTS=OFF
+```
+
+<Note>
+  If you are using vcpkg for dependencies, append `-vcpkg` to the preset name: `debug-linux-vcpkg`.
+</Note>
+
+## Running the full test suite
+
+After a successful build, run all tests with `ctest` using the same preset you used for building:
+
+```bash
+ctest --preset debug-linux
+```
+
+Pass `-V` to see the full DOSBox Staging log output for every test:
+
+```bash
+ctest --preset debug-linux -V
+```
+
+## Filtering tests
+
+CTest accepts a `-R` option that takes a regex or exact name. Use it to run a specific test suite, a single test case, or a group of related tests.
+
+### Run all cases in one test suite
+
+```bash
+ctest --preset debug-linux -R DOS_FilesTest
+```
+
+### Run a single test case
+
+```bash
+ctest --preset debug-linux -R DOS_FilesTest.DOS_MakeName_Basic_Failures
+```
+
+### Run a group of test cases with a wildcard
+
+Run all test cases in `DOS_FilesTest` whose names begin with `DOS_MakeName_`:
+
+```bash
+ctest --preset debug-linux -R "DOS_FilesTest.DOS_MakeName_*"
+```
+
+## Running test executables directly
+
+Running the compiled test binary directly gives you coloured output and lets you start an interactive `gdb` session if a test crashes. Test binaries live under `build/<preset>/tests/`.
+
+```bash
+build/debug-linux/tests/dosbox_tests \
+    --gtest_filter=DOS_FilesTest.DOS_MakeName_Basic_Failures
+```
+
+The `--gtest_filter` flag accepts the same `Suite.CaseName` syntax and supports wildcards:
+
+```bash
+# Run all test cases in a suite
+build/debug-linux/tests/dosbox_tests --gtest_filter=DOS_FilesTest.*
+
+# Run a specific case
+build/debug-linux/tests/dosbox_tests \
+    --gtest_filter=DOS_FilesTest.DOS_MakeName_Basic_Failures
+```
+
+<Tip>
+  Use direct binary invocation during active development. The coloured GTest output and instant gdb attach are much faster to iterate with than going through CTest.
+</Tip>
+
+## Sanitizer builds
+
+Sanitizer builds add compile-time instrumentation that catches bugs at runtime — memory errors, undefined behaviour, and data races — that would otherwise be silent or intermittent. They compile and run slower than a normal debug build, so use them when exercising new code or doing a periodic whole-program check.
+
+Two sanitizer modes are available, and they are mutually exclusive:
+
+| CMake option | What it detects |
+|---|---|
+| `-DOPT_SANITIZER=ON` | Memory errors and undefined behaviour (AddressSanitizer + UBSan) |
+| `-DOPT_THREAD_SANITIZER=ON` | Data races (ThreadSanitizer) |
+
+### Building with AddressSanitizer and UBSan
+
+```bash
+cmake -DOPT_SANITIZER=ON --preset=release-linux
+cmake --build --preset=release-linux
+```
+
+Run the resulting binary as you normally would, then exit and inspect the output for sanitizer reports. A clean run produces no sanitizer output.
+
+<Warning>
+  Sanitizer availability and performance vary by platform and compiler. If the default flags don't work for your setup, you may need to adjust the `SANITIZER_FLAGS` variable in `CMakeLists.txt` manually.
+</Warning>
+
+For more information, refer to the GCC or Clang documentation on the `-fsanitize` compiler flag.
+
+## CTest documentation
+
+For the full list of available CTest options, see the [CTest documentation](https://cmake.org/cmake/help/v3.31/manual/ctest.1.html).
